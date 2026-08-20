@@ -1,6 +1,9 @@
 type PageTwoProps = {
   searchParams?: Promise<{ start?: string | string[]; goal?: string | string[] }>;
 };
+import Link from 'next/link';
+import { SiApachespark } from "react-icons/si";
+import { IoIosArrowRoundBack } from "react-icons/io";
 
 export default async function PageTwo({ searchParams }: PageTwoProps) {
   const params = (await searchParams) ?? {};
@@ -33,11 +36,19 @@ export default async function PageTwo({ searchParams }: PageTwoProps) {
 
   return (
     <div className='flex flex-row w-screen h-screen bg-[#eeeeee]'>
-        <div className='m-20'>
-          <p className='mb-2 text-xl font-bold text-[48px]'>ROUTE</p>
+        <Link href="/" aria-label="Back to map" className="m-5 h-fit">
+          <button type="button" className="flex bg-black rounded-[20] p-1">
+            <IoIosArrowRoundBack size={30} color='#ffffff'/>
+          </button>
+        </Link>
+        <div className='ml- mt-10'>
+          <div className="flex flex-row">
+            <p className=' text-xl font-bold text-[48px]'>ROUTE</p>
+            <SiApachespark size={20} />
+          </div>
           <p className='mb-2 text-xl font-bold text-[48px]'>COMPARISON</p>
-          <p className='mb-14 text-gray-600'>{routeText}</p>
-          <div className="w-[500px] h-fit p-20 flex  rounded-[15px] bg-[#ffffff] justify-center">
+          <p className='mb-5 text-gray-600 text-2xl'>{routeText}</p>
+          <div className="w-[500px] h-fit p-10 flex  rounded-[15px] bg-[#ffffff] justify-center">
               <div>
                   <div className='flex flex-col items-center '>
                       <p className='text-[40px] font-bold'>BFS vs. A*</p>
@@ -45,7 +56,7 @@ export default async function PageTwo({ searchParams }: PageTwoProps) {
                       <p>Search and Custom Heuristic Search</p>
                   </div>
                   <div className="grid grid-cols-3 mt-10 pb-4 border-b text-center font-bold">
-                  <div />
+                  <div/>
                   <div>BFS</div>
                   <div>A*</div>
                   </div>

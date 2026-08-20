@@ -1,5 +1,6 @@
 'use client'
 import React, { useEffect, useRef, useState } from 'react';
+import { TbCircleNumber1Filled } from "react-icons/tb";
 
 const initialNodes = [
   { id: 'Arad', label: 'Arad', x: -300, y: -150 },
@@ -23,6 +24,8 @@ const initialNodes = [
   { id: 'Iasi', label: 'Iasi', x: 520, y: -220 },
   { id: 'Neamt', label: 'Neamt', x: 350, y: -280 }
 ];
+
+const cityNames = initialNodes.map((node) => node.id);
 
 const initialEdges = [
   { from: 'Arad', to: 'Zerind', label: '75' },
@@ -131,7 +134,9 @@ function findPathEdgeIds(start: string, goal: string) {
 
 export default function VisMap() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const previewRefs = useRef<Array<HTMLDivElement | null>>([]);
   const networkRef = useRef<any>(null);
+  const previewNetworksRef = useRef<any[]>([]);
   const nodesDataSetRef = useRef<any>(null);
   const edgesDataSetRef = useRef<any>(null);
   const selectionRef = useRef({ start: '', goal: '' });
@@ -201,6 +206,26 @@ export default function VisMap() {
       };
 
       networkRef.current = new Network(containerRef.current!, data, options);
+      previewNetworksRef.current = previewRefs.current
+        .filter((container): container is HTMLDivElement => container !== null)
+        .map((container) => new Network(container, data, options));
+
+      const handleNodeClick = (params: any) => {
+        if (params.nodes.length === 0) return;
+
+        const nodeId = String(params.nodes[0]);
+        const current = selectionRef.current;
+        const nextSelection = current.start && current.goal
+          ? { start: nodeId, goal: '' }
+          : !current.start
+            ? { start: nodeId, goal: current.goal }
+            : nodeId === current.start
+              ? current
+              : { start: current.start, goal: nodeId };
+
+        selectionRef.current = nextSelection;
+        setSelection(nextSelection);
+      };
 
       networkRef.current.on('hoverNode', (params: any) => {
         if (selectionRef.current.start && selectionRef.current.goal) return;
@@ -227,29 +252,17 @@ export default function VisMap() {
         resetEdgeColors();
       });
 
-      networkRef.current.on('click', (params: any) => {
-        if (params.nodes.length > 0) {
-          const nodeId = params.nodes[0];
-          const current = selectionRef.current;
-
-          if (!current.start) {
-            current.start = nodeId;
-          } else if (!current.goal && nodeId !== current.start) {
-            current.goal = nodeId;
-          } else {
-            current.start = nodeId;
-            current.goal = '';
-          }
-
-          setSelection({ ...current });
-        }
-      });
+      networkRef.current.on('click', handleNodeClick);
+      previewNetworksRef.current.forEach((network) => network.on('click', handleNodeClick));
     });
 
     return () => {
       if (networkRef.current) {
         networkRef.current.destroy();
       }
+
+      previewNetworksRef.current.forEach((network) => network.destroy());
+      previewNetworksRef.current = [];
     };
   }, []);
 
@@ -296,42 +309,85 @@ export default function VisMap() {
   }, [selection]);
 
   return (
-    <div style={{ position: 'relative', width: '100vw', height: '100vh', background: '#ffffff' }}>
-      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+    <main style={{ boxSizing: 'border-box', width: '100vw', height: '100vh', padding: '10px', overflow: 'hidden', background: '#eeeeee', color: '#111111', fontFamily: 'Arial, sans-serif' }}>
+      <header style={{ height: '26px', padding: '0 16px', display: 'flex', alignItems: 'center', background: '#ffffff', borderRadius: '9px', fontSize: '14px' }}>
+        Compare search algorithm on Romania map
+      </header>
 
-      <div style={{ 
-        position: 'absolute', top: '20px', left: '20px', 
-        background: 'rgba(255, 255, 255, 0.9)', padding: '15px', borderRadius: '12px', 
-        boxShadow: '0 8px 16px rgba(0,0,0,0.15)', zIndex: 10,
-        color: 'black', backdropFilter: 'blur(4px)', width: '250px'
-      }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          <p style={{ margin: 0, fontSize: '14px', fontFamily: 'sans-serif', fontWeight: 'bold' }}>
-            Click on a node to select Start and Goal.
+      <section style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 235px', height: 'calc(100% - 36px)', gap: '12px', marginTop: '10px', alignItems: 'stretch' }}>
+        {['Blind search'].map((title, index) => (
+          <article key={title} style={{ minWidth: 0, minHeight: 0, padding: '28px 16px 10px', background: '#ffffff', borderRadius: '9px' }}>
+            
+            <div
+              ref={(element) => { previewRefs.current[index] = element; }}
+              style={{ width: '100%', height: 'calc(100% - 30px)' }}
+            />
+          </article>
+        ))}
+
+        <aside style={{ minHeight: 0, padding: '24px 18px', background: '#ffffff', borderRadius: '9px' }}>
+          <p style={{ margin: '18px 0 12px', fontSize: '13px', fontWeight: '700', lineHeight: 1.35 }}>
+            Select
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', fontSize: '14px', fontFamily: 'sans-serif', fontWeight: 'bold' }}>
-            Start Node:
-            <div style={{ marginTop: '5px', padding: '8px', borderRadius: '6px', border: '2px solid #22c55e', backgroundColor: 'white', minHeight: '20px' }}>
-              {selection.start || '...'}
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', fontSize: '14px', fontFamily: 'sans-serif', fontWeight: 'bold' }}>
-            Goal Node:
-            <div style={{ marginTop: '5px', padding: '8px', borderRadius: '6px', border: '2px solid #dc2626', backgroundColor: 'white', minHeight: '20px' }}>
-              {selection.goal || '...'}
-            </div>
-          </div>
-          <button 
+          <label style={{ display: 'block', fontSize: '12px', color: '#6b7280' }}>
+            Start Cities
+            <select
+              value={selection.start}
+              onChange={(event) => {
+                const start = event.target.value;
+                const nextSelection = { start, goal: start === selection.goal ? '' : selection.goal };
+                selectionRef.current = nextSelection;
+                setSelection(nextSelection);
+              }}
+              style={{ display: 'block', width: '100%', marginTop: '6px', padding: '10px', border: '1px solid #d1d5db', borderRadius: '10px', background: '#ffffff', fontSize: '14px' }}
+            >
+              <option value="">Select start city</option>
+              {cityNames.map((city) => <option key={city} value={city}>{city}</option>)}
+            </select>
+          </label>
+          <button
+            type="button"
+            aria-label="Swap start and goal cities"
+            onClick={() => {
+              const nextSelection = { start: selection.goal, goal: selection.start };
+              selectionRef.current = nextSelection;
+              setSelection(nextSelection);
+            }}
+            style={{ display: 'block', margin: '12px auto', width: '34px', height: '34px', border: 'none', borderRadius: '50%', background: '#e5e7eb', fontSize: '18px', cursor: 'pointer' }}
+          >
+            ⇅
+          </button>
+          <label style={{ display: 'block', fontSize: '12px', color: '#6b7280' }}>
+            Goal City
+            <select
+              value={selection.goal}
+              onChange={(event) => {
+                const goal = event.target.value;
+                if (goal === selection.start) return;
+                const nextSelection = { ...selection, goal };
+                selectionRef.current = nextSelection;
+                setSelection(nextSelection);
+              }}
+              style={{ display: 'block', width: '100%', marginTop: '6px', padding: '10px', border: '1px solid #d1d5db', borderRadius: '10px', background: '#ffffff', fontSize: '14px' }}
+            >
+              <option value="">Select goal city</option>
+              {cityNames.filter((city) => city !== selection.start).map((city) => <option key={city} value={city}>{city}</option>)}
+            </select>
+          </label>
+          <button
             onClick={() => {
               selectionRef.current = { start: '', goal: '' };
               setSelection({ start: '', goal: '' });
             }}
-            style={{ padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: '#3b82f6', color: '#white', fontWeight: 'bold', cursor: 'pointer' }}
+            style={{ width: '100%', marginTop: '14px', padding: '8px', border: 'none', borderRadius: '5px', backgroundColor: '#3b82f6', color: 'white', fontWeight: '700', cursor: 'pointer' }}
           >
             Reset Selection
           </button>
-        </div>
-      </div>
-    </div>
+          <div ref={containerRef} style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', opacity: 0 }} />
+        </aside>
+      </section>
+
+      
+    </main>
   );
 }

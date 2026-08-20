@@ -401,7 +401,7 @@ export default function VisMap() {
               selectionRef.current = { start: '', goal: '' };
               setSelection({ start: '', goal: '' });
             }}
-            style={{ width: '100%', marginTop: '14px', padding: '8px', border: 'none', borderRadius: '10px', backgroundColor: '#3b82f6', color: 'white', fontWeight: '700', cursor: 'pointer' }}
+            style={{ width: '100%', marginTop: '14px', padding: '12px', border: 'none', borderRadius: '10px', backgroundColor: '#696969', color: 'white', fontWeight: '700', cursor: 'pointer' }}
           >
             Reset Selection
           </button>

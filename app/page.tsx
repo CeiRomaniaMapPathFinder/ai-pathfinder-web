@@ -407,7 +407,19 @@ export default function VisMap() {
           </button>
           <button
             type="button"
-            onClick={() => router.push('/page2')}
+            onClick={() => {
+              if (!selection.start || !selection.goal) {
+                window.alert('Please select both Start City and Goal City before starting search.');
+                return;
+              }
+
+              const query = new URLSearchParams({
+                start: selection.start,
+                goal: selection.goal
+              });
+
+              router.push(`/page2?${query.toString()}`);
+            }}
             style={{ width: '100%', marginTop: '10px', padding: '12px', border: 'none', borderRadius: '10px', backgroundColor: '#000000', color: '#ffffff', fontSize: '16px', fontWeight: '700', cursor: 'pointer' }}
           >
             ▶ Start Search

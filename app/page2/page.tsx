@@ -25,8 +25,8 @@ export default function PageTwo() {
   ];
 
   return (
-    <div className='flex w-screen h-screen bg-amber-100'>
-        <div className="w-[500px] h-fit p-20 flex m-20 rounded-[15px] bg-amber-500 justify-center">
+    <div className='flex w-screen h-screen bg-[#eeeeee]'>
+        <div className="w-[500px] h-fit p-20 flex m-20 rounded-[15px] bg-[#ffffff] justify-center">
             <div>
                 <div className='flex flex-col items-center '>
                     <p className='text-[40px] te'>BFS vs. A*</p>

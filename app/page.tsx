@@ -1,6 +1,8 @@
 'use client'
 import React, { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { TbCircleNumber1Filled } from "react-icons/tb";
+import { VscLocation } from "react-icons/vsc";
 
 const initialNodes = [
   { id: 'Arad', label: 'Arad', x: -300, y: -150 },
@@ -133,6 +135,7 @@ function findPathEdgeIds(start: string, goal: string) {
 }
 
 export default function VisMap() {
+  const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const previewRefs = useRef<Array<HTMLDivElement | null>>([]);
   const networkRef = useRef<any>(null);
@@ -326,24 +329,35 @@ export default function VisMap() {
         ))}
 
         <aside style={{ minHeight: 0, padding: '24px 18px', background: '#ffffff', borderRadius: '9px' }}>
-          <p style={{ margin: '18px 0 12px', fontSize: '13px', fontWeight: '700', lineHeight: 1.35 }}>
-            Select
-          </p>
-          <label style={{ display: 'block', fontSize: '12px', color: '#6b7280' }}>
-            Start Cities
-            <select
-              value={selection.start}
-              onChange={(event) => {
-                const start = event.target.value;
-                const nextSelection = { start, goal: start === selection.goal ? '' : selection.goal };
-                selectionRef.current = nextSelection;
-                setSelection(nextSelection);
-              }}
-              style={{ display: 'block', width: '100%', marginTop: '6px', padding: '10px', border: '1px solid #d1d5db', borderRadius: '10px', background: '#ffffff', fontSize: '14px' }}
-            >
-              <option value="">Select start city</option>
-              {cityNames.map((city) => <option key={city} value={city}>{city}</option>)}
-            </select>
+          <div className='flex flex-row items-center'>  
+            <TbCircleNumber1Filled size={26}/>
+            <p style={{fontSize: '24px', fontWeight: '700', lineHeight: 1.35 }} className='ml-1'>
+              Select Cities
+            </p>
+          </div>
+          <label style={{ display: 'block', fontSize: '12px', color: '#6b7280' }} className='mt-4 ml-1'>
+            Start City
+            <div style={{ position: 'relative', marginTop: '6px' }}>
+              <VscLocation
+                size={19}
+                color="#22c55e"
+                aria-hidden="true"
+                style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', zIndex: 1 }}
+              />
+              <select
+                value={selection.start}
+                onChange={(event) => {
+                  const start = event.target.value;
+                  const nextSelection = { start, goal: start === selection.goal ? '' : selection.goal };
+                  selectionRef.current = nextSelection;
+                  setSelection(nextSelection);
+                }}
+                style={{ display: 'block', width: '100%', padding: '10px 10px 10px 36px', border: '1px solid #d1d5db', borderRadius: '10px', background: '#ffffff', fontSize: '14px' }}
+              >
+                <option value="">Select start city</option>
+                {cityNames.map((city) => <option key={city} value={city}>{city}</option>)}
+              </select>
+            </div>
           </label>
           <button
             type="button"
@@ -357,31 +371,46 @@ export default function VisMap() {
           >
             ⇅
           </button>
-          <label style={{ display: 'block', fontSize: '12px', color: '#6b7280' }}>
+          <label style={{ display: 'block', fontSize: '12px', color: '#6b7280' }} className='ml-1'>
             Goal City
-            <select
-              value={selection.goal}
-              onChange={(event) => {
-                const goal = event.target.value;
-                if (goal === selection.start) return;
-                const nextSelection = { ...selection, goal };
-                selectionRef.current = nextSelection;
-                setSelection(nextSelection);
-              }}
-              style={{ display: 'block', width: '100%', marginTop: '6px', padding: '10px', border: '1px solid #d1d5db', borderRadius: '10px', background: '#ffffff', fontSize: '14px' }}
-            >
-              <option value="">Select goal city</option>
-              {cityNames.filter((city) => city !== selection.start).map((city) => <option key={city} value={city}>{city}</option>)}
-            </select>
+            <div style={{ position: 'relative', marginTop: '6px' }}>
+              <VscLocation
+                size={19}
+                color="#ef4444"
+                aria-hidden="true"
+                style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', zIndex: 1 }}
+              />
+              <select
+                value={selection.goal}
+                onChange={(event) => {
+                  const goal = event.target.value;
+                  if (goal === selection.start) return;
+                  const nextSelection = { ...selection, goal };
+                  selectionRef.current = nextSelection;
+                  setSelection(nextSelection);
+                }}
+                style={{ display: 'block', width: '100%', padding: '10px 10px 10px 36px', border: '1px solid #d1d5db', borderRadius: '10px', background: '#ffffff', fontSize: '14px' }}
+              >
+                <option value="">Select goal city</option>
+                {cityNames.filter((city) => city !== selection.start).map((city) => <option key={city} value={city}>{city}</option>)}
+              </select>
+            </div>
           </label>
           <button
             onClick={() => {
               selectionRef.current = { start: '', goal: '' };
               setSelection({ start: '', goal: '' });
             }}
-            style={{ width: '100%', marginTop: '14px', padding: '8px', border: 'none', borderRadius: '5px', backgroundColor: '#3b82f6', color: 'white', fontWeight: '700', cursor: 'pointer' }}
+            style={{ width: '100%', marginTop: '14px', padding: '8px', border: 'none', borderRadius: '10px', backgroundColor: '#3b82f6', color: 'white', fontWeight: '700', cursor: 'pointer' }}
           >
             Reset Selection
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push('/page2')}
+            style={{ width: '100%', marginTop: '10px', padding: '12px', border: 'none', borderRadius: '10px', backgroundColor: '#000000', color: '#ffffff', fontSize: '16px', fontWeight: '700', cursor: 'pointer' }}
+          >
+            ▶ Start Search
           </button>
           <div ref={containerRef} style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', opacity: 0 }} />
         </aside>

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { SiApachespark } from "react-icons/si";
 import { IoIosArrowRoundBack } from "react-icons/io";
 import RomaniaMap from '../../components/RomaniaMap';
-import { findPathNodes } from '../../components/routePath';
+import { findPathNodes,findPathCost } from '../../components/routePath';
 import { CgPerformance } from "react-icons/cg";
 
 export default async function PageTwo({ searchParams }: PageTwoProps) {
@@ -13,20 +13,27 @@ export default async function PageTwo({ searchParams }: PageTwoProps) {
   const start = Array.isArray(params.start) ? params.start[0] : params.start;
   const goal = Array.isArray(params.goal) ? params.goal[0] : params.goal;
   const routeText = start && goal ? `${start} -> ${goal}` : 'Please select cities from the main page';
+  const pathNodes = start && goal
+  ? findPathNodes(start, goal)
+  : [];
   const pathText = start && goal
     ? findPathNodes(start, goal).join(' -> ')
     : routeText;
-
+  const pathCost = start && goal
+    ? findPathCost(start, goal)
+    : 0;
+  const nodeExplore = pathNodes.length-1;
+  
   const comparisonData = [
     {
       label: "Path Cost",
-      bfs: "200",
-      astar: "1200",
+      bfs: pathCost.toString(),
+      astar: pathCost.toString(),
     },
     {
       label: "Node Explore",
-      bfs: "10",
-      astar: "6",
+      bfs: nodeExplore.toString(),
+      astar: nodeExplore.toString(),
     },
     {
       label: "Memory Usage",

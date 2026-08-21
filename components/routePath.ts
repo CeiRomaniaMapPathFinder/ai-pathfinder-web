@@ -53,3 +53,27 @@ export function findPathEdgeIds(start: string, goal: string) {
     )?.id)
     .filter((id): id is number => id !== undefined);
 }
+export function findPathCost(start: string, goal: string) {
+  const pathNodes = findPathNodes(start, goal);
+
+  if (pathNodes.length < 2) return 0;
+
+  let totalCost = 0;
+
+  for (let i = 0; i < pathNodes.length - 1; i++) {
+    const from = pathNodes[i];
+    const to = pathNodes[i + 1];
+
+    const edge = routeEdges.find(
+      (edge) =>
+        (edge.from === from && edge.to === to) ||
+        (edge.from === to && edge.to === from)
+    );
+
+    if (edge) {
+      totalCost += Number(edge.label);
+    }
+  }
+
+  return totalCost;
+}

@@ -6,6 +6,7 @@ import { SiApachespark } from "react-icons/si";
 import { IoIosArrowRoundBack } from "react-icons/io";
 import RomaniaMap from '../../components/RomaniaMap';
 import { findPathNodes } from '../../components/routePath';
+import { CgPerformance } from "react-icons/cg";
 
 export default async function PageTwo({ searchParams }: PageTwoProps) {
   const params = (await searchParams) ?? {};
@@ -19,22 +20,22 @@ export default async function PageTwo({ searchParams }: PageTwoProps) {
   const comparisonData = [
     {
       label: "Path Cost",
-      bfs: "500",
-      astar: "400",
+      bfs: "200",
+      astar: "1200",
     },
     {
       label: "Node Explore",
       bfs: "10",
-      astar: "8",
+      astar: "6",
     },
     {
       label: "Memory Usage",
       bfs: "420 KB",
-      astar: "420 KB",
+      astar: "850 KB",
     },
     {
       label: "Execution Time",
-      bfs: "2.31 ms",
+      bfs: "5.31 ms",
       astar: "2.31 ms",
     },
   ];
@@ -95,6 +96,40 @@ export default async function PageTwo({ searchParams }: PageTwoProps) {
             </div>
           </div>
         </div>
+
+        <aside className='mt-5 flex h-[calc(100vh-2.5rem)] w-120 shrink-0 flex-col rounded-[15px] bg-[#ffffff] p-6 shadow-sm'>
+          <div className='mb-10 flex flex-col gap-2'>
+            <h2 className='text-[45px] font-bold leading-tight'>Performance</h2>
+            <div className='flex flex-row items-center'>
+              <h2 className='text-[45px] font-bold leading-tight'>Overview</h2>
+              <CgPerformance size={36} className='mt-2 ml-3'/>
+            </div>
+  
+          </div>
+          <div className='flex flex-1 flex-col gap-30'>
+            {comparisonData.map((item) => {
+              const bfsValue = Number.parseFloat(item.bfs);
+              const astarValue = Number.parseFloat(item.astar);
+              const maxValue = Math.max(bfsValue, astarValue) || 1;
+
+              return (
+                <section key={item.label}>
+                  <h3 className='mb-2 text-sm font-bold'>{item.label}{item.label === 'Execution Time' ? ' (ms)' : ''}</h3>
+                  <div className='mb-2 flex items-center gap-2 text-xs'>
+                    <span className='w-7'>BFS</span>
+                    <div className='h-5 flex-1 rounded-sm bg-[#9b9b9b]' style={{ maxWidth: `${(bfsValue / maxValue) * 100}%` }} />
+                    <span className='w-12 font-semibold text-[#8b8b8b]'>{item.bfs}</span>
+                  </div>
+                  <div className='flex items-center gap-2 text-xs'>
+                    <span className='w-7'>A*</span>
+                    <div className='h-5 flex-1 rounded-sm bg-[#696969]' style={{ maxWidth: `${(astarValue / maxValue) * 100}%` }} />
+                    <span className='w-12 font-semibold text-[#8b8b8b]'>{item.astar}</span>
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        </aside>
         
     </div>
   );

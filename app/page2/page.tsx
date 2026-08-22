@@ -1,5 +1,5 @@
 import SearchComparisonClient from "../../components/SearchComparisonClient";
-
+import { AiFillExclamationCircle } from "react-icons/ai";
 type PageTwoProps = {
   searchParams?: Promise<{
     start?: string | string[];

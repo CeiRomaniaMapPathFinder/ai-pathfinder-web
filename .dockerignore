@@ -1,0 +1,14 @@
+node_modules
+.next
+out
+build
+coverage
+.git
+.github
+.vscode
+.env*
+*.pem
+*.key
+*.tsbuildinfo
+.DS_Store
+*.md

@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ai-pathfinder-web
 
-## Getting Started
+Next.js frontend for the Romania map pathfinder. Talks to [`ai-pathfinder-api`](https://github.com/CeiRomaniaMapPathFinder/ai-pathfinder-api).
 
-First, run the development server:
+## Requirements
+
+- Node 22 (`.nvmrc`) — `nvm use`
+- pnpm 11 (pinned via `packageManager`) — `corepack enable` picks the right version automatically
+
+## Getting started
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
+cp .env.example .env.local
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Command | What it does |
+| --- | --- |
+| `pnpm dev` | Dev server with hot reload on port 3000 |
+| `pnpm build` | Production build (standalone output) |
+| `pnpm start` | Serve a production build locally |
+| `pnpm lint` | ESLint |
+| `pnpm typecheck` | Generates route types, then `tsc --noEmit` |
 
-## Learn More
+CI runs `pnpm lint`, `pnpm typecheck` and a Docker build — the same commands you run locally, so a green local run means a green CI run.
 
-To learn more about Next.js, take a look at the following resources:
+`pnpm typecheck` runs `next typegen` first. Next generates route types such as `LayoutProps` into `.next/types`, which do not exist on a fresh clone; bare `tsc --noEmit` fails without them.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Environment
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Variable | Where it is set | Purpose |
+| --- | --- | --- |
+| `NEXT_PUBLIC_API_URL` | `.env.local` for dev, Dokploy for deployed environments | Base URL of the pathfinder API |
+| `APP_COMMIT` | Injected by the Docker build via `--build-arg GIT_SHA` | Commit SHA reported by `/api/build-info` |
 
-## Deploy on Vercel
+`APP_COMMIT` is unset locally, so `/api/build-info` returns `"unknown"` during development. That is expected.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Build info endpoint
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+curl http://localhost:3000/api/build-info
+# {"status":"UP","commit":"unknown"}
+```
+
+Deployed, `commit` is the SHA of the running build. The deploy workflow polls this endpoint until it reports the commit it just pushed, so a deploy only passes once the new build is actually live.
+
+## Docker
+
+```bash
+docker build --build-arg GIT_SHA=$(git rev-parse HEAD) -t pathfinder-web:local .
+docker run --rm -p 3000:3000 pathfinder-web:local
+```
+
+Multi-stage build producing a standalone Next server that runs as a non-root user on port 3000.
+
+## Deployment
+
+Push to `main` builds an image, pushes it to GHCR as `ghcr.io/ceiromaniamappathfinder/ai-pathfinder-web`, triggers a Dokploy redeploy, and waits for `/api/build-info` to report the new commit. Rolling back means pointing the Dokploy app at a previous `sha-<commit>` tag and redeploying.

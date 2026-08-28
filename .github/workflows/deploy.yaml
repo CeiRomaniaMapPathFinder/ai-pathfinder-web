@@ -60,6 +60,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Check the API URL is configured
+        env:
+          API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+        run: |
+          if [ -z "$API_URL" ]; then
+            echo "::error::Repo variable NEXT_PUBLIC_API_URL is not set. It is inlined into the browser bundle at build time, so an empty value ships a frontend that cannot reach the API while the deploy still passes."
+            exit 1
+          fi
+          echo "Building against $API_URL."
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:

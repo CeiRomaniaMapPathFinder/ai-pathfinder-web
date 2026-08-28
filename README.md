@@ -5,7 +5,7 @@ Next.js frontend for the Romania map pathfinder. Talks to [`ai-pathfinder-api`](
 ## Requirements
 
 - Node 22 (`.nvmrc`) — `nvm use`
-- pnpm 11 (pinned via `packageManager`) — `corepack enable` picks the right version automatically
+- pnpm 11 (pinned via `packageManager`) — `npm i -g pnpm@11.11.0`
 
 ## Getting started
 

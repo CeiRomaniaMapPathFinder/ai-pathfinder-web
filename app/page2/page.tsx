@@ -65,7 +65,7 @@ export default async function PageTwo({ searchParams }: PageTwoProps) {
         </div>
 
         {/* MIDDLE: same place as the original BFS/A* cards */}
-        <main className="m-5 flex min-w-0 flex-1 flex-col gap-5 overflow-hidden rounded-[15px]">
+        <main className="m-5 flex min-w-0 flex-1 flex-col gap-3 overflow-hidden rounded-[15px]">
           {/* ADDED: original BFS card upgraded to the full animation player */}
           <BfsSearchPlayer />
 

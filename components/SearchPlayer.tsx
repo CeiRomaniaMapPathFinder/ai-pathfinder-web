@@ -162,35 +162,35 @@ export default function SearchPlayer({
   return (
     <section
       onMouseDown={onActivate}
-      className={`flex min-h-0 flex-1 flex-col rounded-[15px] bg-white px-7 pt-5 pb-4 shadow-sm transition ${
+      className={`flex min-h-0 flex-1 flex-col rounded-[15px] bg-white px-4 pt-2.5 pb-2 shadow-sm transition ${
         active ? 'ring-2 ring-black/10' : ''
       }`}
     >
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex shrink-0 items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="text-[22px] font-bold">{title}</h2>
-          <p className="mt-1 truncate text-sm text-gray-500">
+          <h2 className="truncate text-[14px] font-bold leading-tight">{title}</h2>
+          <p className="mt-0.5 truncate text-[11px] text-gray-500">
             {step?.done ? 'Path Found' : 'Current Path'}&nbsp;&nbsp; {pathText}
           </p>
         </div>
-        <div className="shrink-0 text-right text-xs text-gray-500">
+        <div className="shrink-0 text-right text-[10px] leading-tight text-gray-500">
           <div className="font-semibold text-gray-900">Step {trace.length ? stepIndex + 1 : 0} / {trace.length}</div>
           <div>{active ? 'Keyboard active' : 'Click card for keyboard'}</div>
         </div>
       </div>
 
-      <div className="min-h-0 flex-1">
+      <div className="mt-1.5 min-h-0 flex-1">
         <RomaniaMap start={start} goal={goal} step={step} />
       </div>
 
-      <div className="mt-2 flex items-center gap-1.5">
-        <button type="button" title="Reset" onClick={reset} className="h-7 w-7 rounded-md text-sm text-gray-500 hover:bg-gray-100">↺</button>
-        <button type="button" title="Previous step" onClick={previous} disabled={stepIndex === 0} className="h-7 w-7 rounded-md text-sm text-gray-500 hover:bg-gray-100 disabled:opacity-30">◀</button>
-        <button type="button" title={isPlaying ? 'Pause' : 'Play'} onClick={togglePlay} disabled={trace.length <= 1} className="h-7 min-w-9 rounded-md bg-black px-3 text-sm text-white hover:bg-gray-800 disabled:opacity-30">
+      <div className="mt-1.5 flex shrink-0 items-center gap-1">
+        <button type="button" title="Reset" onClick={reset} className="h-6 w-6 rounded-md text-sm text-gray-500 hover:bg-gray-100">↺</button>
+        <button type="button" title="Previous step" onClick={previous} disabled={stepIndex === 0} className="h-6 w-6 rounded-md text-sm text-gray-500 hover:bg-gray-100 disabled:opacity-30">◀</button>
+        <button type="button" title={isPlaying ? 'Pause' : 'Play'} onClick={togglePlay} disabled={trace.length <= 1} className="h-6 min-w-8 rounded-md bg-black px-2 text-xs text-white hover:bg-gray-800 disabled:opacity-30">
           {isPlaying ? '❚❚' : '▶'}
         </button>
-        <button type="button" title="Next step" onClick={next} disabled={stepIndex >= maxIndex} className="h-7 w-7 rounded-md text-sm text-gray-500 hover:bg-gray-100 disabled:opacity-30">▶|</button>
-        <button type="button" title="Jump to end" onClick={jumpToEnd} disabled={stepIndex >= maxIndex} className="h-7 w-7 rounded-md text-sm text-gray-500 hover:bg-gray-100 disabled:opacity-30">⏭</button>
+        <button type="button" title="Next step" onClick={next} disabled={stepIndex >= maxIndex} className="h-6 w-6 rounded-md text-sm text-gray-500 hover:bg-gray-100 disabled:opacity-30">▶|</button>
+        <button type="button" title="Jump to end" onClick={jumpToEnd} disabled={stepIndex >= maxIndex} className="h-6 w-6 rounded-md text-sm text-gray-500 hover:bg-gray-100 disabled:opacity-30">⏭</button>
 
         <input
           aria-label={`${title} search step`}
@@ -210,7 +210,7 @@ export default function SearchPlayer({
           aria-label="Playback speed"
           value={speed}
           onChange={(event) => setSpeed(Number(event.target.value))}
-          className="h-7 rounded-md border-none bg-transparent px-1 text-xs font-semibold text-gray-500 outline-none"
+          className="h-6 rounded-md border-none bg-transparent px-1 text-xs font-semibold text-gray-500 outline-none"
         >
           {SPEEDS.map((value) => <option key={value} value={value}>{value}×</option>)}
         </select>

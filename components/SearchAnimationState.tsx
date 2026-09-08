@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import SearchPlayer from './SearchPlayer';
-import { buildAStarTrace, buildBfsTrace, type SearchTraceStep } from './routePath';
+import { buildAStarTrace, buildBfsTrace, type SearchTraceStep } from '../lib/routePath';
 
 type Algorithm = 'bfs' | 'astar';
 

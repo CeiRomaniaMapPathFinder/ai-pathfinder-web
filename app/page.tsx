@@ -1,33 +1,34 @@
 'use client'
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { TbCircleNumber1Filled } from "react-icons/tb";
 import { VscLocation } from "react-icons/vsc";
+import { buildDeviceIcon, pixelFont } from '../lib/pixelNetworkTheme';
+import { cityPositions } from '../lib/cityPositions';
 
-const initialNodes = [
-  { id: 'Arad', label: 'Arad', x: -300, y: -150 },
-  { id: 'Zerind', label: 'Zerind', x: -250, y: -250 },
-  { id: 'Oradea', label: 'Oradea', x: -200, y: -350 },
-  { id: 'Sibiu', label: 'Sibiu', x: -50, y: -120 },
-  { id: 'Timisoara', label: 'Timisoara', x: -300, y: 0 },
-  { id: 'Lugoj', label: 'Lugoj', x: -150, y: 70 },
-  { id: 'Mehadia', label: 'Mehadia', x: -150, y: 150 },
-  { id: 'Drobeta', label: 'Drobeta', x: -150, y: 230 },
-  { id: 'Craiova', label: 'Craiova', x: 50, y: 260 },
-  { id: 'Rimnicu Vilcea', label: 'Rimnicu Vilcea', x: 0, y: -20 },
-  { id: 'Fagaras', label: 'Fagaras', x: 150, y: -120 },
-  { id: 'Pitesti', label: 'Pitesti', x: 150, y: 50 },
-  { id: 'Bucharest', label: 'Bucharest', x: 350, y: 100 },
-  { id: 'Giurgiu', label: 'Giurgiu', x: 300, y: 250 },
-  { id: 'Urziceni', label: 'Urziceni', x: 480, y: 50 },
-  { id: 'Hirsova', label: 'Hirsova', x: 650, y: 50 },
-  { id: 'Eforie', label: 'Eforie', x: 720, y: 200 },
-  { id: 'Vaslui', label: 'Vaslui', x: 600, y: -120 },
-  { id: 'Iasi', label: 'Iasi', x: 520, y: -220 },
-  { id: 'Neamt', label: 'Neamt', x: 350, y: -280 }
-];
+// Hand-plotted positions as a percentage of the viewport (matching the map
+// photo, which is `fill` + `object-fit: cover` across the full 100vw x 100vh
+// main — so x% of window.innerWidth / y% of window.innerHeight lands exactly
+// on that spot in the photo). Shared with RomaniaMap.tsx (via
+// components/cityPositions.ts) so both maps stay in sync; see
+// computeNodePixelPositions() for how percent turns into the exact pixel
+// position each render.
+const initialNodes = cityPositions;
 
 const cityNames = initialNodes.map((node) => node.id);
+
+// The photo fills the whole viewport, but each visible network container
+// only covers part of it (e.g. the graph column, not the sidebar) — so a
+// node's local pixel position is its viewport pixel position minus that
+// container's own offset from the viewport origin.
+function computeNodePixelPositions(containerRect: { left: number; top: number }) {
+  return initialNodes.map((n) => ({
+    id: n.id,
+    x: (n.xPct / 100) * window.innerWidth - containerRect.left,
+    y: (n.yPct / 100) * window.innerHeight - containerRect.top,
+  }));
+}
 
 const initialEdges = [
   { from: 'Arad', to: 'Zerind', label: '75' },
@@ -55,11 +56,109 @@ const initialEdges = [
   { from: 'Iasi', to: 'Neamt', label: '87' }
 ];
 
-const baseColors = [
-  { background: '#e5e7eb', border: '#6b7280' }
-];
+const activePathColor = '#22d3ee';
+const idleEdgeColor = '#a5f3fc';
+const hoverEdgeColor = '#67e8f9';
+// Edges get a dark drop-shadow (below) so a bright cyan line reads clearly
+// whether it crosses a light cloud or a dark mountain patch in the photo.
+const edgeShadow = { enabled: true, color: 'rgba(0,0,0,0.65)', size: 6, x: 0, y: 0 };
+const lockedInteraction = { hover: true, dragView: false, zoomView: false, dragNodes: false, selectable: true } as const;
+// The view is pinned 1:1 to real screen pixels (see alignPreviewNetwork
+// below) rather than vis-network's auto-fit zoom, so these are plain pixel
+// sizes now — no zoom multiplier to compensate for.
+const ROUTER_ICON_SIZE = 23;
+const DEVICE_ICON_SIZE = 26;
+const EDGE_FONT_SIZE = 11; // path-cost numbers only — city names are custom-drawn below
 
-const activePathColor = '#3b82f6';
+// City names are drawn by hand on an `afterDrawing` canvas hook (see
+// drawCityLabels) instead of vis-network's built-in label renderer, because
+// that renderer only supports one flat text-stroke — it can't layer a solid
+// outline under a separate soft shadow, or add a rounded backing chip.
+const CITY_LABEL_FONT_SIZE = 12;
+const CITY_LABEL_COLOR = '#eafbff'; // light cyan-white, picks up a touch of the UI's glow
+// Once both start and goal are picked, every other city name drops to this
+// muted tone instead — makes the PC/server labels the only bright text left.
+const CITY_LABEL_IDLE_DIM_COLOR = '#64748b';
+const CITY_LABEL_OFFSET_Y = 24; // gap below the icon center where the label sits
+// 1) A real solid stroke (opaque dark navy, not a translucent blur) — holds
+//    up on mid-tone terrain (green patches near Fagaras/Timisoara) where a
+//    shadow alone gets lost.
+const CITY_LABEL_STROKE_WIDTH = 3;
+const CITY_LABEL_STROKE_COLOR = '#0a1628';
+// A soft shadow rendered in the same pass as the stroke (canvas shadows
+// composite behind their source), so the outline gets a soft halo under it
+// rather than replacing the shadow with a hard edge.
+const CITY_LABEL_SHADOW_COLOR = 'rgba(0,0,0,0.6)';
+const CITY_LABEL_SHADOW_BLUR = 6;
+const CITY_LABEL_SHADOW_OFFSET_Y = 2;
+// 4) Small dark backing chip — subtle, but guarantees contrast regardless of
+// what's directly behind a given label.
+const CITY_LABEL_PILL_COLOR = 'rgba(8,16,28,0.55)';
+const CITY_LABEL_PILL_PAD_X = 5;
+const CITY_LABEL_PILL_PAD_Y = 4;
+const CITY_LABEL_PILL_RADIUS = 6;
+
+const idleRouterIcon = buildDeviceIcon('router', 'idle');
+const pcIcon = buildDeviceIcon('pc', 'start');
+const serverIcon = buildDeviceIcon('server', 'goal');
+
+// Draws every city name for one network instance: dark solid outline (with a
+// soft shadow baked into the same stroke pass) topped with a crisp light
+// cyan-white fill, over a small rounded dark chip for guaranteed contrast.
+// Once both start and goal are chosen, every other city dims so the PC/server
+// labels are the only bright text left on the map.
+function drawCityLabels(
+  ctx: CanvasRenderingContext2D,
+  positions: Map<string, { x: number; y: number }>,
+  selection: { start: string; goal: string },
+) {
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.font = `${CITY_LABEL_FONT_SIZE}px ${pixelFont.style.fontFamily}`;
+
+  const bothPicked = Boolean(selection.start && selection.goal);
+
+  for (const node of initialNodes) {
+    const pos = positions.get(node.id);
+    if (!pos) continue;
+
+    const isEndpoint = node.id === selection.start || node.id === selection.goal;
+    const fillColor = bothPicked && !isEndpoint ? CITY_LABEL_IDLE_DIM_COLOR : CITY_LABEL_COLOR;
+
+    const labelY = pos.y + CITY_LABEL_OFFSET_Y;
+    const textWidth = ctx.measureText(node.label).width;
+    const pillW = textWidth + CITY_LABEL_PILL_PAD_X * 2;
+    const pillH = CITY_LABEL_FONT_SIZE + CITY_LABEL_PILL_PAD_Y * 2;
+    const pillX = pos.x - pillW / 2;
+    const pillY = labelY - CITY_LABEL_PILL_PAD_Y;
+
+    const roundRect = (ctx as unknown as { roundRect?: (x: number, y: number, w: number, h: number, r: number) => void }).roundRect;
+    ctx.beginPath();
+    if (typeof roundRect === 'function') {
+      roundRect.call(ctx, pillX, pillY, pillW, pillH, CITY_LABEL_PILL_RADIUS);
+    } else {
+      ctx.rect(pillX, pillY, pillW, pillH);
+    }
+    ctx.fillStyle = CITY_LABEL_PILL_COLOR;
+    ctx.fill();
+
+    ctx.shadowColor = CITY_LABEL_SHADOW_COLOR;
+    ctx.shadowBlur = CITY_LABEL_SHADOW_BLUR;
+    ctx.shadowOffsetY = CITY_LABEL_SHADOW_OFFSET_Y;
+    ctx.lineWidth = CITY_LABEL_STROKE_WIDTH;
+    ctx.strokeStyle = CITY_LABEL_STROKE_COLOR;
+    ctx.strokeText(node.label, pos.x, labelY);
+
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+    ctx.fillStyle = fillColor;
+    ctx.fillText(node.label, pos.x, labelY);
+  }
+
+  ctx.restore();
+}
 
 function findPathEdgeIds(start: string, goal: string) {
   const adjacency = new Map<string, string[]>();
@@ -143,16 +242,40 @@ export default function VisMap() {
   const nodesDataSetRef = useRef<any>(null);
   const edgesDataSetRef = useRef<any>(null);
   const selectionRef = useRef({ start: '', goal: '' });
+  // Latest on-screen pixel position per city, kept in sync by
+  // alignPreviewNetwork() and read every frame by drawCityLabels().
+  const nodePixelPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
 
   const [selection, setSelection] = useState({ start: '', goal: '' });
+
+  // DEV HELPER — move your mouse over the map and read the live xPct/yPct
+  // readout in the bottom-left corner to hand-place nodes in `initialNodes`
+  // above. Safe to delete this whole block (and the readout in the JSX
+  // below) once you're done repositioning.
+  const [cursorPct, setCursorPct] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !containerRef.current) return;
 
+    let resizeHandler: (() => void) | null = null;
+
     import('vis-network/standalone').then(({ Network, DataSet }) => {
       if (!nodesDataSetRef.current) {
         nodesDataSetRef.current = new DataSet(
-          initialNodes.map((n, i) => ({ ...n, color: baseColors[i % baseColors.length] }))
+          // x/y are placeholders — alignPreviewNetwork() overwrites them with
+          // real pixel positions (derived from xPct/yPct) right after the
+          // network mounts, once the container's actual size is known. No
+          // `label` here on purpose — city names are hand-drawn by
+          // drawCityLabels() instead of vis-network's built-in label text.
+          initialNodes.map(({ id }) => ({
+            id,
+            x: 0,
+            y: 0,
+            shape: 'image',
+            image: idleRouterIcon,
+            size: ROUTER_ICON_SIZE,
+            shapeProperties: { interpolation: false },
+          }))
         );
       }
 
@@ -161,7 +284,7 @@ export default function VisMap() {
           initialEdges.map((edge, index) => ({
             ...edge,
             id: index,
-            color: { color: '#000000', highlight: '#000000', hover: '#000000' }
+            color: { color: idleEdgeColor, highlight: idleEdgeColor, hover: idleEdgeColor }
           }))
         );
       }
@@ -176,7 +299,7 @@ export default function VisMap() {
         edgesDataSetRef.current.update(
           allEdges.map((edge: any) => ({
             id: edge.id,
-            color: { color: '#000000', highlight: '#000000', hover: '#000000' }
+            color: { color: idleEdgeColor, highlight: idleEdgeColor, hover: idleEdgeColor }
           }))
         );
       };
@@ -187,7 +310,7 @@ export default function VisMap() {
         edgesDataSetRef.current.update(
           connectedEdgeIds.map((edgeId: string) => ({
             id: edgeId,
-            color: { color: '#3b82f6', highlight: '#3b82f6', hover: '#3b82f6' }
+            color: { color: hoverEdgeColor, highlight: hoverEdgeColor, hover: hoverEdgeColor }
           }))
         );
       };
@@ -195,23 +318,59 @@ export default function VisMap() {
       const options = {
         physics: false,
         edges: {
-          font: { align: 'top', size: 14, color: '#020081', strokeWidth: 3, strokeColor: '#ffffff' },
-          color: { color: '#000000', highlight: '#000000', hover: '#000000' },
-          width: 3
+          // No label background pill — a dark text outline instead, so there's
+          // no rectangle anywhere, just glowing lines and outlined text sitting
+          // directly on the map.
+          font: {
+            align: 'top',
+            size: EDGE_FONT_SIZE,
+            color: '#a5f3fc',
+            face: pixelFont.style.fontFamily,
+            strokeWidth: 2,
+            strokeColor: '#020617',
+          },
+          color: { color: idleEdgeColor, highlight: hoverEdgeColor, hover: hoverEdgeColor },
+          width: 2,
+          shadow: edgeShadow,
         },
         nodes: {
-          shape: 'box',
-          font: { size: 16, color: '#111827' },
-          borderWidth: 3,
-          shadow: { enabled: true, color: 'rgba(0,0,0,0.15)', size: 10, x: 5, y: 5 }
+          shape: 'image',
+          shapeProperties: { interpolation: false },
+          // No node font here — city names are hand-drawn (see drawCityLabels).
         },
-        interaction: { hover: true }
+        // Locked down: this is a fixed reference map, not a freeform canvas —
+        // clicking still selects start/goal, but nothing can be dragged or
+        // panned out of view.
+        interaction: lockedInteraction,
+      };
+
+      // Pin the view 1:1 to real screen pixels instead of vis-network's
+      // auto-fit zoom: read the container's current on-screen rect, convert
+      // every node's xPct/yPct into a pixel position local to that
+      // container, push those into the (shared) node DataSet, then center
+      // the view at scale 1 so network-unit == on-screen pixel exactly.
+      const alignPreviewNetwork = (network: any, container: HTMLDivElement) => {
+        const rect = container.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
+        const positions = computeNodePixelPositions(rect);
+        nodesDataSetRef.current.update(positions);
+        nodePixelPositionsRef.current = new Map(positions.map((p) => [p.id, { x: p.x, y: p.y }]));
+        network.moveTo({ position: { x: rect.width / 2, y: rect.height / 2 }, scale: 1 });
+        network.redraw();
       };
 
       networkRef.current = new Network(containerRef.current!, data, options);
-      previewNetworksRef.current = previewRefs.current
-        .filter((container): container is HTMLDivElement => container !== null)
-        .map((container) => new Network(container, data, options));
+
+      const previewContainers = previewRefs.current.filter(
+        (container): container is HTMLDivElement => container !== null,
+      );
+      previewNetworksRef.current = previewContainers.map((container) => new Network(container, data, options));
+      previewNetworksRef.current.forEach((network) => {
+        network.on('afterDrawing', (ctx: CanvasRenderingContext2D) => {
+          drawCityLabels(ctx, nodePixelPositionsRef.current, selectionRef.current);
+        });
+      });
+      previewNetworksRef.current.forEach((network, i) => alignPreviewNetwork(network, previewContainers[i]));
 
       const handleNodeClick = (params: any) => {
         if (params.nodes.length === 0) return;
@@ -257,9 +416,18 @@ export default function VisMap() {
 
       networkRef.current.on('click', handleNodeClick);
       previewNetworksRef.current.forEach((network) => network.on('click', handleNodeClick));
+
+      // Re-align on resize — the container's pixel rect (and the photo's own
+      // pixel mapping, since it's window-sized) both change with the window.
+      resizeHandler = () => {
+        previewNetworksRef.current.forEach((network, i) => alignPreviewNetwork(network, previewContainers[i]));
+      };
+      window.addEventListener('resize', resizeHandler);
     });
 
     return () => {
+      if (resizeHandler) window.removeEventListener('resize', resizeHandler);
+
       if (networkRef.current) {
         networkRef.current.destroy();
       }
@@ -272,10 +440,10 @@ export default function VisMap() {
   useEffect(() => {
     if (!nodesDataSetRef.current) return;
     
-    const updatedNodes = initialNodes.map((node, i) => {
-      if (node.id === selection.start) return { id: node.id, color: { background: '#22c55e', border: '#14532d' }, font: { color: '#ffffff' } };
-      if (node.id === selection.goal) return { id: node.id, color: { background: '#dc2626', border: '#7f1d1d' }, font: { color: '#ffffff' } };
-      return { id: node.id, color: baseColors[i % baseColors.length], font: { color: '#111827' } };
+    const updatedNodes = initialNodes.map((node) => {
+      if (node.id === selection.start) return { id: node.id, image: pcIcon, size: DEVICE_ICON_SIZE };
+      if (node.id === selection.goal) return { id: node.id, image: serverIcon, size: DEVICE_ICON_SIZE };
+      return { id: node.id, image: idleRouterIcon, size: ROUTER_ICON_SIZE };
     });
 
     nodesDataSetRef.current.update(updatedNodes);
@@ -287,7 +455,7 @@ export default function VisMap() {
       edgesDataSetRef.current.update(
         allEdges.map((edge: any) => ({
           id: edge.id,
-          color: { color: '#000000', highlight: '#000000', hover: '#000000' }
+          color: { color: idleEdgeColor, highlight: idleEdgeColor, hover: idleEdgeColor }
         }))
       );
     };
@@ -312,35 +480,105 @@ export default function VisMap() {
   }, [selection]);
 
   return (
-    <main style={{ boxSizing: 'border-box', width: '100vw', height: '100vh', padding: '10px', overflow: 'hidden', background: '#eeeeee', color: '#111111', fontFamily: 'Arial, sans-serif' }}>
-      <header style={{ height: '26px', padding: '0 16px', display: 'flex', alignItems: 'center', background: '#ffffff', borderRadius: '9px', fontSize: '14px' }}>
-        Compare search algorithm on Romania map
+    <main
+      className={pixelFont.className}
+      onMouseMove={(event) => {
+        setCursorPct({
+          x: (event.clientX / window.innerWidth) * 100,
+          y: (event.clientY / window.innerHeight) * 100,
+        });
+      }}
+      style={{
+        position: 'relative',
+        boxSizing: 'border-box',
+        width: '100vw',
+        height: '100vh',
+        padding: '10px',
+        overflow: 'hidden',
+        background: '#060a13',
+        color: '#e2f8ff',
+      }}
+    >
+      {/* The photo itself is the background now — no dark scrim over it.
+          Legibility comes from the icon glow/outline + text-stroke treatment
+          instead of dimming the map. */}
+      <Image
+        src="/images/romania-fantasy-map.png"
+        alt=""
+        aria-hidden
+        fill
+        priority
+        sizes="100vw"
+        style={{ objectFit: 'cover', zIndex: 0 }}
+      />
+
+      {/* No box here either — just a standout glowing title sitting on the map. */}
+      <header
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          height: '100px',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0 20px',
+          fontSize: '30px',
+          fontWeight: 700,
+          letterSpacing: '2px',
+          color: '#a5f3fc',
+          textShadow: '0 0 10px rgba(34,211,238,0.9), 0 0 26px rgba(34,211,238,0.55)',
+        }}
+      >
+        ROMANIA MAP
       </header>
 
-      <section style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 235px', height: 'calc(100% - 36px)', gap: '12px', marginTop: '10px', alignItems: 'stretch' }}>
+      <section style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 260px', height: 'calc(100% - 50px)', gap: '12px', marginTop: '10px', alignItems: 'stretch' }}>
         {['Blind search'].map((title, index) => (
-          <article key={title} style={{ minWidth: 0, minHeight: 0, padding: '28px 16px 10px', background: '#ffffff', borderRadius: '9px' }}>
-            
+          // No card here on purpose — the graph sits directly on the map
+          // background with no panel, border, or fill behind it.
+          <article
+            key={title}
+            style={{
+              position: 'relative',
+              minWidth: 0,
+              minHeight: 0,
+              overflow: 'hidden',
+            }}
+          >
             <div
               ref={(element) => { previewRefs.current[index] = element; }}
-              style={{ width: '100%', height: 'calc(100% - 30px)' }}
+              style={{ position: 'relative', width: '100%', height: '100%' }}
             />
           </article>
         ))}
 
-        <aside style={{ minHeight: 0, padding: '24px 18px', background: '#ffffff', borderRadius: '9px' }}>
-          <div className='flex flex-row items-center'>  
-            <TbCircleNumber1Filled size={26}/>
-            <p style={{fontSize: '24px', fontWeight: '700', lineHeight: 1.35 }} className='ml-1'>
+        {/* alignSelf: 'start' so this box hugs its own content (ending right
+            after the Start Search button) instead of stretching to match the
+            graph column's full height. */}
+        <aside
+          style={{
+            position: 'relative',
+            alignSelf: 'start',
+            marginRight: '16px',
+            padding: '24px 18px',
+            background: 'rgba(10,18,32,0.55)',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(34,211,238,0.2)',
+            borderRadius: '9px',
+            boxShadow: '0 0 25px rgba(34,211,238,0.1)',
+          }}
+        >
+          <div className='flex flex-row items-center'>
+            <TbCircleNumber1Filled size={22} color="#67e8f9" />
+            <p style={{ fontSize: '16px', fontWeight: 700, lineHeight: 1.5, color: '#e2f8ff' }} className='ml-2'>
               Select Cities
             </p>
           </div>
-          <label style={{ display: 'block', fontSize: '12px', color: '#6b7280' }} className='mt-4 ml-1'>
+          <label style={{ display: 'block', fontSize: '10px', color: '#7dd3fc' }} className='mt-4 ml-1'>
             Start City
             <div style={{ position: 'relative', marginTop: '6px' }}>
               <VscLocation
                 size={19}
-                color="#22c55e"
+                color="#4ade80"
                 aria-hidden="true"
                 style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', zIndex: 1 }}
               />
@@ -352,9 +590,13 @@ export default function VisMap() {
                   selectionRef.current = nextSelection;
                   setSelection(nextSelection);
                 }}
-                style={{ display: 'block', width: '100%', padding: '10px 10px 10px 36px', border: '1px solid #d1d5db', borderRadius: '10px', background: '#ffffff', fontSize: '14px' }}
+                style={{
+                  display: 'block', width: '100%', padding: '10px 10px 10px 36px',
+                  border: '1px solid rgba(34,211,238,0.3)', borderRadius: '10px',
+                  background: '#0b1220', color: '#e2f8ff', fontSize: '11px',
+                }}
               >
-                <option value="">Select start city</option>
+                <option value="">Select city</option>
                 {cityNames.map((city) => <option key={city} value={city}>{city}</option>)}
               </select>
             </div>
@@ -367,16 +609,19 @@ export default function VisMap() {
               selectionRef.current = nextSelection;
               setSelection(nextSelection);
             }}
-            style={{ display: 'block', margin: '12px auto', width: '34px', height: '34px', border: 'none', borderRadius: '50%', background: '#e5e7eb', fontSize: '18px', cursor: 'pointer' }}
+            style={{
+              display: 'block', margin: '14px auto', width: '34px', height: '34px', border: '1px solid rgba(34,211,238,0.3)',
+              borderRadius: '50%', background: '#0b1220', color: '#67e8f9', fontSize: '16px', cursor: 'pointer',
+            }}
           >
             ⇅
           </button>
-          <label style={{ display: 'block', fontSize: '12px', color: '#6b7280' }} className='ml-1'>
+          <label style={{ display: 'block', fontSize: '10px', color: '#7dd3fc' }} className='ml-1'>
             Goal City
             <div style={{ position: 'relative', marginTop: '6px' }}>
               <VscLocation
                 size={19}
-                color="#ef4444"
+                color="#f87171"
                 aria-hidden="true"
                 style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', zIndex: 1 }}
               />
@@ -389,9 +634,13 @@ export default function VisMap() {
                   selectionRef.current = nextSelection;
                   setSelection(nextSelection);
                 }}
-                style={{ display: 'block', width: '100%', padding: '10px 10px 10px 36px', border: '1px solid #d1d5db', borderRadius: '10px', background: '#ffffff', fontSize: '14px' }}
+                style={{
+                  display: 'block', width: '100%', padding: '10px 10px 10px 36px',
+                  border: '1px solid rgba(34,211,238,0.3)', borderRadius: '10px',
+                  background: '#0b1220', color: '#e2f8ff', fontSize: '11px',
+                }}
               >
-                <option value="">Select goal city</option>
+                <option value="">Select city</option>
                 {cityNames.filter((city) => city !== selection.start).map((city) => <option key={city} value={city}>{city}</option>)}
               </select>
             </div>
@@ -401,7 +650,11 @@ export default function VisMap() {
               selectionRef.current = { start: '', goal: '' };
               setSelection({ start: '', goal: '' });
             }}
-            style={{ width: '100%', marginTop: '14px', padding: '12px', border: 'none', borderRadius: '10px', backgroundColor: '#696969', color: 'white', fontWeight: '700', cursor: 'pointer' }}
+            style={{
+              width: '100%', marginTop: '16px', padding: '12px', border: 'none',
+              borderRadius: '10px', backgroundColor: '#dc2626', color: '#fff0f0', fontWeight: 700,
+              fontSize: '10px', cursor: 'pointer', boxShadow: '0 0 14px rgba(239,68,68,0.4)',
+            }}
           >
             Reset Selection
           </button>
@@ -420,7 +673,11 @@ export default function VisMap() {
 
               router.push(`/page2?${query.toString()}`);
             }}
-            style={{ width: '100%', marginTop: '10px', padding: '12px', border: 'none', borderRadius: '10px', backgroundColor: '#000000', color: '#ffffff', fontSize: '16px', fontWeight: '700', cursor: 'pointer' }}
+            style={{
+              width: '100%', marginTop: '10px', padding: '12px', border: 'none', borderRadius: '10px',
+              backgroundColor: '#0891b2', color: '#f0fdff', fontSize: '11px', fontWeight: 700, cursor: 'pointer',
+              boxShadow: '0 0 18px rgba(34,211,238,0.45)',
+            }}
           >
             ▶ Start Search
           </button>
@@ -428,7 +685,29 @@ export default function VisMap() {
         </aside>
       </section>
 
-      
+      {/* DEV HELPER readout — delete along with the mouseMove handler above
+          and the cursorPct state once you're done placing nodes. */}
+      {cursorPct && (
+        <div
+          aria-hidden
+          style={{
+            position: 'fixed',
+            left: '10px',
+            bottom: '10px',
+            zIndex: 50,
+            padding: '8px 12px',
+            borderRadius: '8px',
+            background: 'rgba(0,0,0,0.85)',
+            border: '1px solid rgba(34,211,238,0.4)',
+            color: '#4ade80',
+            fontSize: '12px',
+            fontFamily: 'monospace',
+            pointerEvents: 'none',
+          }}
+        >
+          xPct: {cursorPct.x.toFixed(1)}, yPct: {cursorPct.y.toFixed(1)}
+        </div>
+      )}
     </main>
   );
 }

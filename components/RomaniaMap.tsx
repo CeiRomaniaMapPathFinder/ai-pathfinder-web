@@ -45,15 +45,15 @@ const BASE_EDGE_WIDTH_IDLE = 1.5;
 const BASE_EDGE_WIDTH_PATH = 3;
 const BASE_EDGE_SHADOW_SIZE_IDLE = 5;
 const BASE_EDGE_SHADOW_SIZE_PATH = 10;
-const BASE_EDGE_FONT_SIZE = 11;
-const BASE_CITY_LABEL_FONT_SIZE = 12;
-const BASE_CITY_LABEL_OFFSET_Y = 24;
-const BASE_CITY_LABEL_STROKE_WIDTH = 3;
-const BASE_CITY_LABEL_SHADOW_BLUR = 6;
-const BASE_CITY_LABEL_SHADOW_OFFSET_Y = 2;
-const BASE_CITY_LABEL_PILL_PAD_X = 5;
-const BASE_CITY_LABEL_PILL_PAD_Y = 4;
-const BASE_CITY_LABEL_PILL_RADIUS = 6;
+const BASE_EDGE_FONT_SIZE = 9;
+const BASE_CITY_LABEL_FONT_SIZE = 9;
+const BASE_CITY_LABEL_OFFSET_Y = 16;
+const BASE_CITY_LABEL_STROKE_WIDTH = 2;
+const BASE_CITY_LABEL_SHADOW_BLUR = 4;
+const BASE_CITY_LABEL_SHADOW_OFFSET_Y = 1.5;
+const BASE_CITY_LABEL_PILL_PAD_X = 3;
+const BASE_CITY_LABEL_PILL_PAD_Y = 2.5;
+const BASE_CITY_LABEL_PILL_RADIUS = 4;
 
 const CITY_LABEL_COLOR = '#eafbff';
 const CITY_LABEL_IDLE_DIM_COLOR = '#64748b';
@@ -124,15 +124,15 @@ function computeSizeMetrics(containerWidth: number, manualScale: number): SizeMe
     edgeWidthPath: scaled(BASE_EDGE_WIDTH_PATH, 2),
     edgeShadowSizeIdle: scaled(BASE_EDGE_SHADOW_SIZE_IDLE, 3),
     edgeShadowSizePath: scaled(BASE_EDGE_SHADOW_SIZE_PATH, 6),
-    edgeFontSize: scaled(BASE_EDGE_FONT_SIZE, 8),
-    labelFontSize: scaled(BASE_CITY_LABEL_FONT_SIZE, 9),
-    labelOffsetY: scaled(BASE_CITY_LABEL_OFFSET_Y, 12),
-    labelStrokeWidth: scaled(BASE_CITY_LABEL_STROKE_WIDTH, 1.5),
-    labelShadowBlur: scaled(BASE_CITY_LABEL_SHADOW_BLUR, 2),
-    labelShadowOffsetY: scaled(BASE_CITY_LABEL_SHADOW_OFFSET_Y, 1),
-    labelPillPadX: scaled(BASE_CITY_LABEL_PILL_PAD_X, 2),
-    labelPillPadY: scaled(BASE_CITY_LABEL_PILL_PAD_Y, 1.5),
-    labelPillRadius: scaled(BASE_CITY_LABEL_PILL_RADIUS, 3),
+    edgeFontSize: scaled(BASE_EDGE_FONT_SIZE, 6),
+    labelFontSize: scaled(BASE_CITY_LABEL_FONT_SIZE, 7),
+    labelOffsetY: scaled(BASE_CITY_LABEL_OFFSET_Y, 9),
+    labelStrokeWidth: scaled(BASE_CITY_LABEL_STROKE_WIDTH, 1),
+    labelShadowBlur: scaled(BASE_CITY_LABEL_SHADOW_BLUR, 1.5),
+    labelShadowOffsetY: scaled(BASE_CITY_LABEL_SHADOW_OFFSET_Y, 0.75),
+    labelPillPadX: scaled(BASE_CITY_LABEL_PILL_PAD_X, 1.5),
+    labelPillPadY: scaled(BASE_CITY_LABEL_PILL_PAD_Y, 1),
+    labelPillRadius: scaled(BASE_CITY_LABEL_PILL_RADIUS, 2.5),
   };
 }
 

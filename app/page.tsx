@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { TbCircleNumber1Filled } from "react-icons/tb";
+import { TbCircleNumber1Filled, TbPlayerPlayFilled } from "react-icons/tb";
 import { VscLocation } from "react-icons/vsc";
 import { buildDeviceIcon, pixelFont } from '../lib/pixelNetworkTheme';
 import { cityPositions } from '../lib/cityPositions';
@@ -101,6 +101,16 @@ const CITY_LABEL_PILL_RADIUS = 6;
 const idleRouterIcon = buildDeviceIcon('router', 'idle');
 const pcIcon = buildDeviceIcon('pc', 'start');
 const serverIcon = buildDeviceIcon('server', 'goal');
+
+// Single source of truth for "what icon/size should this node have given the
+// current selection" — used both for the very first paint (see the prefill
+// effect below, which can set selectionRef before the network exists) and
+// for the per-selection-change update effect, so the two can't drift apart.
+function nodeVisualForSelection(nodeId: string, selection: { start: string; goal: string }) {
+  if (nodeId === selection.start) return { image: pcIcon, size: DEVICE_ICON_SIZE };
+  if (nodeId === selection.goal) return { image: serverIcon, size: DEVICE_ICON_SIZE };
+  return { image: idleRouterIcon, size: ROUTER_ICON_SIZE };
+}
 
 // Draws every city name for one network instance: dark solid outline (with a
 // soft shadow baked into the same stroke pass) topped with a crisp light
@@ -254,6 +264,26 @@ export default function VisMap() {
   // below) once you're done repositioning.
   const [cursorPct, setCursorPct] = useState<{ x: number; y: number } | null>(null);
 
+  // Prefill Start/Goal from the URL (?start=..&goal=..) — used when arriving
+  // back from the results page via "Back to Map", so the user can tweak one
+  // city and re-run instead of starting from scratch. Declared before the
+  // network-setup effect below so selectionRef is already correct by the
+  // time that effect's dynamic import resolves and builds the initial node
+  // DataSet (see nodeVisualForSelection above).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    const asValidCity = (id: string | null) => (id && cityNames.includes(id) ? id : '');
+    const nextStart = asValidCity(params.get('start'));
+    const nextGoal = asValidCity(params.get('goal'));
+    if (!nextStart && !nextGoal) return;
+
+    const next = { start: nextStart, goal: nextGoal === nextStart ? '' : nextGoal };
+    selectionRef.current = next;
+    setSelection(next);
+  }, []);
+
   useEffect(() => {
     if (typeof window === 'undefined' || !containerRef.current) return;
 
@@ -267,13 +297,15 @@ export default function VisMap() {
           // network mounts, once the container's actual size is known. No
           // `label` here on purpose — city names are hand-drawn by
           // drawCityLabels() instead of vis-network's built-in label text.
+          // Icon/size read from selectionRef.current (not hardcoded idle) so
+          // cities prefilled from the URL already show as PC/server on the
+          // very first paint, instead of flashing idle-router first.
           initialNodes.map(({ id }) => ({
             id,
             x: 0,
             y: 0,
             shape: 'image',
-            image: idleRouterIcon,
-            size: ROUTER_ICON_SIZE,
+            ...nodeVisualForSelection(id, selectionRef.current),
             shapeProperties: { interpolation: false },
           }))
         );
@@ -440,11 +472,10 @@ export default function VisMap() {
   useEffect(() => {
     if (!nodesDataSetRef.current) return;
     
-    const updatedNodes = initialNodes.map((node) => {
-      if (node.id === selection.start) return { id: node.id, image: pcIcon, size: DEVICE_ICON_SIZE };
-      if (node.id === selection.goal) return { id: node.id, image: serverIcon, size: DEVICE_ICON_SIZE };
-      return { id: node.id, image: idleRouterIcon, size: ROUTER_ICON_SIZE };
-    });
+    const updatedNodes = initialNodes.map((node) => ({
+      id: node.id,
+      ...nodeVisualForSelection(node.id, selection),
+    }));
 
     nodesDataSetRef.current.update(updatedNodes);
 
@@ -675,11 +706,13 @@ export default function VisMap() {
             }}
             style={{
               width: '100%', marginTop: '10px', padding: '12px', border: 'none', borderRadius: '10px',
-              backgroundColor: '#0891b2', color: '#f0fdff', fontSize: '11px', fontWeight: 700, cursor: 'pointer',
+              backgroundColor: '#0891b2', color: '#f0fdff', fontSize: '10px', fontWeight: 700, cursor: 'pointer',
               boxShadow: '0 0 18px rgba(34,211,238,0.45)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
             }}
           >
-            ▶ Start Search
+            <TbPlayerPlayFilled size={11} />
+            Start Search
           </button>
           <div ref={containerRef} style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', opacity: 0 }} />
         </aside>

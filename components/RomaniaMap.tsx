@@ -421,6 +421,12 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
       };
 
       applyLayout();
+      // One more pass on the next frame — a defensive safety net in case the
+      // very first getBoundingClientRect() above landed a frame before the
+      // flex layout (header + two equal-height cards) finished settling,
+      // which would otherwise leave the map sized to a too-small rect until
+      // the next resize/observer event.
+      requestAnimationFrame(applyLayout);
 
       resizeHandler = applyLayout;
       window.addEventListener('resize', resizeHandler);
@@ -555,7 +561,7 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
         sizes="(max-width: 1200px) 100vw, 900px"
         style={{ objectFit: 'cover', zIndex: 0 }}
       />
-      <div ref={containerRef} className="relative h-full w-full" style={{ zIndex: 1 }} />
+      <div ref={containerRef} className="vis-fill relative h-full w-full" style={{ zIndex: 1 }} />
     </div>
   );
 }

@@ -4,14 +4,28 @@ import {
   createContext,
   useCallback,
   useContext,
-  useMemo,
+  useEffect,
   useState,
   type ReactNode,
 } from 'react';
 import { TbPlayerPlayFilled, TbRefresh } from 'react-icons/tb';
 import SearchPlayer from './SearchPlayer';
-import { buildAStarTrace, buildBfsTrace, type SearchTraceStep } from '../lib/routePath';
+import {
+  fetchSearchComparison,
+  type SearchComparisonResponse,
+  type SearchTraceStep,
+} from '../lib/searchApi';
 import { buildDeviceIcon } from '../lib/pixelNetworkTheme';
+
+// Stable identity matters: `trace` is a dependency of an effect inside
+// SearchPlayer that resets playback, so handing it a fresh `[]` on every
+// render would reset the animation every frame and it'd never advance.
+const EMPTY_TRACE: SearchTraceStep[] = [];
+
+// Both keep the "<number> <unit>" shape, because LivePerformanceRows and
+// buildVerdict below read these back out with Number.parseFloat().
+const formatMs = (value: number | undefined) => `${(value ?? 0).toFixed(2)} ms`;
+const formatKb = (value: number | undefined) => `${Math.round(value ?? 0)} KB`;
 
 // Reused by MapLegendCard below — same icon assets the maps themselves draw
 // (see components/RomaniaMap.tsx / app/page.tsx), built once at module scope
@@ -30,6 +44,9 @@ const SIDE_CARD_CLASS =
 const SIDE_CARD_TITLE_GLOW = { textShadow: '0 0 8px rgba(34,211,238,0.7)' } as const;
 
 type Algorithm = 'bfs' | 'astar';
+
+/** Lifecycle of the backend request that supplies both animations. */
+type SearchStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 type LiveState = {
   step?: SearchTraceStep;
@@ -66,6 +83,9 @@ type SearchAnimationContextValue = {
   resetToken: number;
   runBoth: () => void;
   resetBoth: () => void;
+  /** Where the backend request is up to — drives the header status note. */
+  status: SearchStatus;
+  error: string | null;
 };
 
 const SearchAnimationContext = createContext<SearchAnimationContextValue | null>(null);
@@ -85,15 +105,42 @@ type ProviderProps = {
 };
 
 export function SearchAnimationProvider({ start, goal, children }: ProviderProps) {
-  const bfsTrace = useMemo(
-    () => (start && goal ? buildBfsTrace(start, goal) : []),
-    [start, goal],
-  );
+  // Both algorithm runs arrive together from one backend call — nothing is
+  // computed here. See lib/searchApi.ts for the request/response contract.
+  const [result, setResult] = useState<SearchComparisonResponse | null>(null);
+  const [status, setStatus] = useState<SearchStatus>('idle');
+  const [error, setError] = useState<string | null>(null);
 
-  const astarTrace = useMemo(
-    () => (start && goal ? buildAStarTrace(start, goal) : []),
-    [start, goal],
-  );
+  useEffect(() => {
+    if (!start || !goal) {
+      setResult(null);
+      setStatus('idle');
+      setError(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    setStatus('loading');
+    setError(null);
+
+    fetchSearchComparison(start, goal, controller.signal)
+      .then((response) => {
+        if (controller.signal.aborted) return;
+        setResult(response);
+        setStatus('ready');
+      })
+      .catch((cause: unknown) => {
+        if (controller.signal.aborted) return;
+        setResult(null);
+        setStatus('error');
+        setError(cause instanceof Error ? cause.message : 'Could not load search results.');
+      });
+
+    return () => controller.abort();
+  }, [start, goal]);
+
+  const bfsTrace = result?.bfs.steps ?? EMPTY_TRACE;
+  const astarTrace = result?.astar.steps ?? EMPTY_TRACE;
 
   const [activePlayer, setActivePlayer] = useState<Algorithm>('bfs');
   const [bfsLive, setBfsLive] = useState<LiveState>({ index: 0 });
@@ -141,19 +188,22 @@ export function SearchAnimationProvider({ start, goal, children }: ProviderProps
       bfsFinal: String(bfsFinal?.nodesExplored ?? 0),
       astarFinal: String(astarFinal?.nodesExplored ?? 0),
     },
+    // Measured per whole run rather than per step, so the "live" and "final"
+    // columns are the same value — they come straight off the backend's
+    // response envelope instead of being hardcoded like they used to be.
     {
       label: 'Memory Usage',
-      bfs: '420 KB',
-      astar: '850 KB',
-      bfsFinal: '420 KB',
-      astarFinal: '850 KB',
+      bfs: formatKb(result?.bfs.memoryUsageKb),
+      astar: formatKb(result?.astar.memoryUsageKb),
+      bfsFinal: formatKb(result?.bfs.memoryUsageKb),
+      astarFinal: formatKb(result?.astar.memoryUsageKb),
     },
     {
       label: 'Execution Time',
-      bfs: '5.31 ms',
-      astar: '2.31 ms',
-      bfsFinal: '5.31 ms',
-      astarFinal: '2.31 ms',
+      bfs: formatMs(result?.bfs.executionTimeMs),
+      astar: formatMs(result?.astar.executionTimeMs),
+      bfsFinal: formatMs(result?.bfs.executionTimeMs),
+      astarFinal: formatMs(result?.astar.executionTimeMs),
     },
   ];
 
@@ -174,6 +224,8 @@ export function SearchAnimationProvider({ start, goal, children }: ProviderProps
         resetToken,
         runBoth,
         resetBoth,
+        status,
+        error,
       }}
     >
       {children}
@@ -314,9 +366,10 @@ export function MapLegendCard() {
 }
 
 // 3. HEURISTIC EXPLAINER — native <details>/<summary>, no extra state needed
-// for the collapse. Copy is written to match what this app's A* actually
-// does (h(n) = 0 — see lib/routePath.ts) rather than claiming a real
-// straight-line-distance heuristic that isn't implemented here.
+// for the collapse. The "h(n) = 0" note in the copy below describes the
+// sample data in lib/mockSearchResponse.json. REVISIT IT once the real
+// backend is wired up: if that implements a genuine straight-line-distance
+// heuristic, this copy becomes wrong and should drop the caveat.
 export function HeuristicExplainerCard() {
   return (
     <details className={`${SIDE_CARD_CLASS} group`}>
@@ -349,17 +402,38 @@ export function HeuristicExplainerCard() {
 // (see SearchPlayer's own runToken/resetToken effects) and react
 // independently — this component just fires the shared signal.
 export function RunBothButton() {
-  const { runBoth, resetBoth, bothComplete } = useSearchAnimation();
+  const { runBoth, resetBoth, bothComplete, status } = useSearchAnimation();
+  const ready = status === 'ready';
 
   return (
     <button
       type="button"
       onClick={bothComplete ? resetBoth : runBoth}
-      className="ml-auto flex shrink-0 items-center gap-2 rounded-[14px] bg-[#0891b2] px-4 py-2 text-[11px] font-bold text-[#f0fdff] shadow-[0_0_14px_rgba(34,211,238,0.4)] transition hover:bg-cyan-600"
+      disabled={!ready}
+      className="ml-auto flex shrink-0 items-center gap-2 rounded-[14px] bg-[#0891b2] px-4 py-2 text-[11px] font-bold text-[#f0fdff] shadow-[0_0_14px_rgba(34,211,238,0.4)] transition hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none"
     >
       {bothComplete ? <TbRefresh size={14} /> : <TbPlayerPlayFilled size={12} />}
       {bothComplete ? 'Reset Both' : 'Run Both'}
     </button>
+  );
+}
+
+// Surfaces the backend request's state in the header — invisible once the
+// data has landed, so it costs nothing in the normal case.
+export function SearchStatusNote() {
+  const { status, error } = useSearchAnimation();
+
+  if (status === 'ready' || status === 'idle') return null;
+
+  return (
+    <span
+      className={`shrink-0 truncate text-[10px] ${
+        status === 'error' ? 'text-[#f87171]' : 'text-[#7dd3fc]'
+      }`}
+      title={error ?? undefined}
+    >
+      {status === 'loading' ? 'Loading search results…' : `Search failed — ${error}`}
+    </span>
   );
 }
 

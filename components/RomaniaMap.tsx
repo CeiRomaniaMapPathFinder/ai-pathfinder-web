@@ -2,11 +2,11 @@
 
 import { useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { getPathEdgeIds, routeEdges, type SearchTraceStep } from '../lib/routePath';
-import { cityPositions } from '../lib/cityPositions';
+import { getPathEdgeIds, routeEdges } from '../lib/routePath';
+import type { SearchTraceStep } from '../lib/searchApi';
+import { romaniaMapCityPositions } from '../lib/romaniaMapCityPositions';
 import {
   buildDeviceIcon,
-  buildPacketIcon,
   pixelFont,
   type DeviceRole,
   type DeviceTone,
@@ -22,8 +22,17 @@ type RomaniaMapProps = {
   scale?: number;
 };
 
-const PACKET_ID = '__packet__';
-const HOP_DURATION_MS = 420;
+// ─── Animation timing ────────────────────────────────────────────────────
+// All comfortably inside the default 800ms step cadence, so one step's
+// effects resolve before the next begins and the screen never accumulates
+// overlapping leftovers.
+const PROBE_DURATION_MS = 420; // one probe crossing one cable
+const PROBE_TAIL_FRACTION = 0.34; // tail length as a fraction of the cable
+const TRANSMIT_RING_MS = 460; // bloom on the router that transmitted
+const ARRIVE_RING_MS = 340; // snap-in on a router a probe reached
+const ARRIVE_RING_DELAY_MS = PROBE_DURATION_MS * 0.86; // fires as the probe lands
+const DELIVERY_STREAM_MS = 26; // ms per px of dash travel on the final route
+const EFFECT_GC_MS = 1200; // drop spent effects after this long
 
 // --- Proportional sizing -----------------------------------------------
 // Icon/label/edge sizes are NOT fixed pixel constants — they're computed
@@ -40,7 +49,6 @@ const MAX_AUTO_SCALE = 1;
 
 const BASE_ROUTER_ICON_SIZE = 23;
 const BASE_DEVICE_ICON_SIZE = 26;
-const BASE_PACKET_ICON_SIZE = 10;
 const BASE_EDGE_WIDTH_IDLE = 1.5;
 const BASE_EDGE_WIDTH_PATH = 3;
 const BASE_EDGE_SHADOW_SIZE_IDLE = 5;
@@ -69,7 +77,6 @@ const edgeShadowColor = 'rgba(0,0,0,0.65)';
 type SizeMetrics = {
   routerIconSize: number;
   deviceIconSize: number;
-  packetIconSize: number;
   edgeWidthIdle: number;
   edgeWidthPath: number;
   edgeShadowSizeIdle: number;
@@ -88,7 +95,6 @@ type SizeMetrics = {
 const DEFAULT_METRICS: SizeMetrics = {
   routerIconSize: BASE_ROUTER_ICON_SIZE,
   deviceIconSize: BASE_DEVICE_ICON_SIZE,
-  packetIconSize: BASE_PACKET_ICON_SIZE,
   edgeWidthIdle: BASE_EDGE_WIDTH_IDLE,
   edgeWidthPath: BASE_EDGE_WIDTH_PATH,
   edgeShadowSizeIdle: BASE_EDGE_SHADOW_SIZE_IDLE,
@@ -119,7 +125,6 @@ function computeSizeMetrics(containerWidth: number, manualScale: number): SizeMe
   return {
     routerIconSize: scaled(BASE_ROUTER_ICON_SIZE, 12),
     deviceIconSize: scaled(BASE_DEVICE_ICON_SIZE, 14),
-    packetIconSize: scaled(BASE_PACKET_ICON_SIZE, 6),
     edgeWidthIdle: scaled(BASE_EDGE_WIDTH_IDLE, 1),
     edgeWidthPath: scaled(BASE_EDGE_WIDTH_PATH, 2),
     edgeShadowSizeIdle: scaled(BASE_EDGE_SHADOW_SIZE_IDLE, 3),
@@ -156,7 +161,7 @@ function computeNodeStates(
   const frontier = new Set(step?.frontier ?? []);
   const current = step?.currentNode ?? null;
 
-  return cityPositions.map((node) => {
+  return romaniaMapCityPositions.map((node) => {
     let role: DeviceRole = 'router';
     let tone: DeviceTone = 'idle';
 
@@ -194,7 +199,7 @@ function drawCityLabels(
   ctx.textBaseline = 'top';
   ctx.font = `${metrics.labelFontSize}px ${pixelFont.style.fontFamily}`;
 
-  for (const node of cityPositions) {
+  for (const node of romaniaMapCityPositions) {
     const pos = positions.get(node.id);
     if (!pos) continue;
 
@@ -235,42 +240,162 @@ function drawCityLabels(
   ctx.restore();
 }
 
-// Animates the small cyan "packet" node hopping from one router to the next,
-// visualizing the search algorithm probing a new node. Runs on top of the
-// persistent vis-network instance via the public moveNode()/getPositions() API.
-function animateHop(network: any, nodesDataSet: any, fromId: string, toId: string) {
-  const positions = network.getPositions([fromId, toId]);
-  const from = positions[fromId];
-  const to = positions[toId];
-  if (!from || !to) return () => {};
+// ─── Propagation effects ─────────────────────────────────────────────────
+//
+// The animation models what a router mesh actually does: a router that gets
+// examined TRANSMITS down every cable it owns, and the routers on the far
+// end light up as those probes land. Nothing travels across the map as a
+// single object, so nothing can ever appear to teleport — a probe's entire
+// existence is one cable, and several fire at once, which is what makes a
+// breadth-first sweep look like a broadcast instead of a wandering dot.
 
-  let rafId = 0;
-  let cancelled = false;
-  const started = performance.now();
+/** One probe in flight along a single cable. */
+type Probe = { fromId: string; toId: string; startedAt: number };
+/** A ring drawn on a router: it either transmitted, or a probe just landed. */
+type Flash = { nodeId: string; startedAt: number; kind: 'transmit' | 'arrive' };
+type Point = { x: number; y: number };
 
-  nodesDataSet.update({ id: PACKET_ID, hidden: false });
-  network.moveNode(PACKET_ID, from.x, from.y);
+function lerpPoint(from: Point, to: Point, t: number): Point {
+  return { x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t };
+}
 
-  const tick = (now: number) => {
-    if (cancelled) return;
-    const t = Math.min(1, (now - started) / HOP_DURATION_MS);
-    const eased = t < 0.5 ? 2 * t * t : 1 - ((-2 * t + 2) ** 2) / 2;
-    network.moveNode(PACKET_ID, from.x + (to.x - from.x) * eased, from.y + (to.y - from.y) * eased);
+/**
+ * Probes: a bright head with a gradient tail streaking down the cable.
+ *
+ * Every probe runs for the same duration regardless of how long its cable
+ * is, so a whole fan of them launched together also lands together — that
+ * synchronisation is what sells "one hop outward" as a single beat of the
+ * search rather than a scatter of unrelated movement.
+ */
+function drawProbes(
+  ctx: CanvasRenderingContext2D,
+  probes: Probe[],
+  positions: Map<string, Point>,
+  now: number,
+  metrics: SizeMetrics,
+) {
+  ctx.save();
+  ctx.lineCap = 'round';
 
-    if (t < 1) {
-      rafId = requestAnimationFrame(tick);
-    } else {
-      nodesDataSet.update({ id: PACKET_ID, hidden: true });
-    }
-  };
+  for (const probe of probes) {
+    const t = (now - probe.startedAt) / PROBE_DURATION_MS;
+    if (t < 0 || t > 1) continue;
 
-  rafId = requestAnimationFrame(tick);
+    const from = positions.get(probe.fromId);
+    const to = positions.get(probe.toId);
+    if (!from || !to) continue;
 
-  return () => {
-    cancelled = true;
-    if (rafId) cancelAnimationFrame(rafId);
-    nodesDataSet.update({ id: PACKET_ID, hidden: true });
-  };
+    // Decelerate into the far router so the arrival reads as an impact.
+    const eased = 1 - (1 - t) ** 3;
+    const head = lerpPoint(from, to, eased);
+    const tail = lerpPoint(from, to, Math.max(0, eased - PROBE_TAIL_FRACTION));
+    // Fade the last sliver of the flight so the probe dissolves into the
+    // arrival ring instead of stopping dead.
+    const fade = t > 0.82 ? Math.max(0, (1 - t) / 0.18) : 1;
+
+    const gradient = ctx.createLinearGradient(tail.x, tail.y, head.x, head.y);
+    gradient.addColorStop(0, 'rgba(34,211,238,0)');
+    gradient.addColorStop(0.55, `rgba(103,232,249,${0.55 * fade})`);
+    gradient.addColorStop(1, `rgba(236,254,255,${0.95 * fade})`);
+
+    ctx.strokeStyle = gradient;
+    ctx.lineWidth = Math.max(1.5, metrics.edgeWidthPath * 1.15);
+    ctx.shadowColor = `rgba(34,211,238,${0.9 * fade})`;
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.moveTo(tail.x, tail.y);
+    ctx.lineTo(head.x, head.y);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Rings on routers. `transmit` blooms outward from the router doing the
+ * sending; `arrive` snaps inward as a probe lands, so the two read as cause
+ * and effect rather than as the same generic sparkle.
+ */
+function drawFlashes(
+  ctx: CanvasRenderingContext2D,
+  flashes: Flash[],
+  positions: Map<string, Point>,
+  now: number,
+  metrics: SizeMetrics,
+) {
+  ctx.save();
+
+  for (const flash of flashes) {
+    const lifetime = flash.kind === 'transmit' ? TRANSMIT_RING_MS : ARRIVE_RING_MS;
+    const t = (now - flash.startedAt) / lifetime;
+    if (t < 0 || t > 1) continue;
+
+    const pos = positions.get(flash.nodeId);
+    if (!pos) continue;
+
+    const fade = (1 - t) ** 2;
+    const base = metrics.deviceIconSize * 0.5;
+    const radius =
+      flash.kind === 'transmit'
+        ? base * (0.75 + t * 1.6) // bloom outward
+        : base * (1.85 - t * 0.95); // snap inward
+
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, Math.max(1, radius), 0, Math.PI * 2);
+    ctx.strokeStyle =
+      flash.kind === 'transmit'
+        ? `rgba(103,232,249,${0.7 * fade})`
+        : `rgba(236,254,255,${0.85 * fade})`;
+    ctx.lineWidth = Math.max(1, 2.2 * fade);
+    ctx.shadowColor = `rgba(34,211,238,${0.8 * fade})`;
+    ctx.shadowBlur = 12 * fade;
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+/**
+ * The payoff shot: once the goal is reached, the confirmed route carries a
+ * continuous stream of traffic from PC to server. Deliberately the ONLY
+ * continuously-moving thing on screen, so "delivered" looks different in
+ * kind from "still searching", not just brighter.
+ */
+function drawDeliveryStream(
+  ctx: CanvasRenderingContext2D,
+  path: string[],
+  positions: Map<string, Point>,
+  now: number,
+  metrics: SizeMetrics,
+) {
+  if (path.length < 2) return;
+
+  ctx.save();
+  ctx.lineCap = 'round';
+
+  const dash = Math.max(6, metrics.deviceIconSize * 0.5);
+  const gap = dash * 1.5;
+
+  for (let i = 0; i < path.length - 1; i += 1) {
+    const from = positions.get(path[i]);
+    const to = positions.get(path[i + 1]);
+    if (!from || !to) continue;
+
+    ctx.setLineDash([dash, gap]);
+    // Negative offset so the dashes travel PC → server, i.e. the direction
+    // the data is actually going.
+    ctx.lineDashOffset = -((now / DELIVERY_STREAM_MS) * (dash + gap)) % (dash + gap);
+    ctx.strokeStyle = 'rgba(236,254,255,0.95)';
+    ctx.shadowColor = 'rgba(34,211,238,0.95)';
+    ctx.shadowBlur = 12;
+    ctx.lineWidth = Math.max(1.5, metrics.edgeWidthPath);
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
+    ctx.stroke();
+  }
+
+  ctx.restore();
 }
 
 export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapProps) {
@@ -281,7 +406,16 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
   const pathIdsRef = useRef<Set<number>>(new Set());
   const routeKeyRef = useRef<string>('');
   const prevCurrentRef = useRef<string | null>(null);
-  const cancelHopRef = useRef<() => void>(() => {});
+  // Live propagation effects, appended by applyState() and drawn (then
+  // garbage-collected) every frame by the afterDrawing hook.
+  const probesRef = useRef<Probe[]>([]);
+  const flashesRef = useRef<Flash[]>([]);
+  // Which routers the search had already reached as of the previous step —
+  // diffed against the new step to find what was just discovered, and hence
+  // which cables should light up.
+  const knownNodesRef = useRef<Set<string>>(new Set());
+  // The confirmed PC → server route, set once the search completes.
+  const deliveredPathRef = useRef<string[]>([]);
   // Latest on-screen pixel position / tone / role per city, kept in sync by
   // applyLayout()/applyState() and read every frame by drawCityLabels(), and
   // the latest computed size metrics — also read fresh every frame, so a
@@ -321,23 +455,15 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
       nodeToneRef.current = new Map(initialNodeStates.map((n) => [n.id, n.tone]));
       nodeRoleRef.current = new Map(initialNodeStates.map((n) => [n.id, n.role]));
 
-      nodesDataSetRef.current = new DataSet([
+      // Only the real cities are graph nodes. Packets used to be a hidden
+      // dummy node shuffled around with moveNode(); they're pure canvas
+      // effects now, which is what lets several exist at once.
+      nodesDataSetRef.current = new DataSet(
         // x/y are placeholders — applyLayout() overwrites them with real
         // pixel positions (derived from xPct/yPct) right after the network
         // mounts, once the container's actual size is known.
-        ...initialNodeStates.map(({ tone: _tone, role: _role, ...node }) => ({ ...node, x: 0, y: 0 })),
-        {
-          id: PACKET_ID,
-          x: 0,
-          y: 0,
-          label: '',
-          hidden: true,
-          shape: 'image',
-          image: buildPacketIcon(),
-          size: metricsRef.current.packetIconSize,
-          shapeProperties: { interpolation: false },
-        },
-      ]);
+        initialNodeStates.map(({ tone: _tone, role: _role, ...node }) => ({ ...node, x: 0, y: 0 })),
+      );
 
       edgesDataSetRef.current = new DataSet(
         routeEdges.map((edge) => ({
@@ -390,7 +516,7 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
         const metrics = computeSizeMetrics(rect.width, scaleRef.current);
         metricsRef.current = metrics;
 
-        const positions = cityPositions.map((n) => ({
+        const positions = romaniaMapCityPositions.map((n) => ({
           id: n.id,
           x: (n.xPct / 100) * rect.width,
           y: (n.yPct / 100) * rect.height,
@@ -398,7 +524,6 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
         }));
         nodesDataSetRef.current.update(positions);
         nodePixelPositionsRef.current = new Map(positions.map((p) => [p.id, { x: p.x, y: p.y }]));
-        nodesDataSetRef.current.update({ id: PACKET_ID, size: metrics.packetIconSize });
 
         if (edgesDataSetRef.current) {
           edgesDataSetRef.current.update(
@@ -435,36 +560,25 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
       resizeObserver = new ResizeObserver(applyLayout);
       resizeObserver.observe(containerRef.current);
 
-      // Extra hand-drawn glowing "data flow" dashes on top of the currently
-      // discovered path (vis-network's built-in dashed edges are static),
-      // plus the hand-drawn city name labels, on top so text stays crisp.
+      // Everything above vis-network's own node/edge pass is hand-drawn
+      // here, in deliberate depth order: delivery stream (lowest, it's a
+      // steady background state) → probes → router rings → city names on
+      // top, so text never gets washed out by an effect passing under it.
       networkRef.current.on('afterDrawing', (ctx: CanvasRenderingContext2D) => {
         if (!networkRef.current) return;
-        const positions = networkRef.current.getPositions();
         const time = performance.now();
+        const positions = nodePixelPositionsRef.current;
+        const metrics = metricsRef.current;
 
-        ctx.save();
-        ctx.lineCap = 'round';
-        for (const edge of routeEdges) {
-          if (!pathIdsRef.current.has(edge.id)) continue;
-          const a = positions[edge.from];
-          const b = positions[edge.to];
-          if (!a || !b) continue;
+        drawDeliveryStream(ctx, deliveredPathRef.current, positions, time, metrics);
 
-          ctx.setLineDash([9, 7]);
-          ctx.lineDashOffset = -((time / 45) % 16);
-          ctx.strokeStyle = 'rgba(103,232,249,0.95)';
-          ctx.shadowColor = 'rgba(34,211,238,0.9)';
-          ctx.shadowBlur = 9;
-          ctx.lineWidth = 2.4;
-          ctx.beginPath();
-          ctx.moveTo(a.x, a.y);
-          ctx.lineTo(b.x, b.y);
-          ctx.stroke();
-        }
-        ctx.restore();
+        probesRef.current = probesRef.current.filter((probe) => time - probe.startedAt <= EFFECT_GC_MS);
+        drawProbes(ctx, probesRef.current, positions, time, metrics);
 
-        drawCityLabels(ctx, nodePixelPositionsRef.current, nodeToneRef.current, metricsRef.current);
+        flashesRef.current = flashesRef.current.filter((flash) => time - flash.startedAt <= EFFECT_GC_MS);
+        drawFlashes(ctx, flashesRef.current, positions, time, metrics);
+
+        drawCityLabels(ctx, positions, nodeToneRef.current, metrics);
       });
     }
 
@@ -475,7 +589,10 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
       if (routeKey !== routeKeyRef.current) {
         routeKeyRef.current = routeKey;
         prevCurrentRef.current = null;
-        cancelHopRef.current();
+        knownNodesRef.current = new Set();
+        probesRef.current = [];
+        flashesRef.current = [];
+        deliveredPathRef.current = [];
       }
 
       const current = step?.currentNode ?? null;
@@ -502,10 +619,52 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
         }),
       );
 
-      if (current && prevCurrentRef.current && prevCurrentRef.current !== current) {
-        cancelHopRef.current();
-        cancelHopRef.current = animateHop(networkRef.current, nodesDataSetRef.current, prevCurrentRef.current, current);
+      // ── Emit this step's propagation ──────────────────────────────────
+      // The router being expanded transmits down each cable that leads
+      // somewhere the search hadn't reached before; those cables carry a
+      // probe, and each far end flashes as its probe lands. Each probe
+      // crosses exactly one cable, so nothing can ever cut across the map.
+      const known = new Set<string>([...(step?.explored ?? []), ...(step?.frontier ?? [])]);
+      const advancedOneStep = current !== null && current !== prevCurrentRef.current;
+
+      if (advancedOneStep) {
+        const now = performance.now();
+        const newlyReached = [...known].filter((id) => !knownNodesRef.current.has(id));
+        const cables = routeEdges.filter(
+          (edge) =>
+            (edge.from === current && newlyReached.includes(edge.to)) ||
+            (edge.to === current && newlyReached.includes(edge.from)),
+        );
+
+        if (cables.length > 0) {
+          flashesRef.current.push({ nodeId: current, startedAt: now, kind: 'transmit' });
+
+          for (const cable of cables) {
+            const target = cable.from === current ? cable.to : cable.from;
+            probesRef.current.push({ fromId: current, toId: target, startedAt: now });
+            flashesRef.current.push({
+              nodeId: target,
+              startedAt: now + ARRIVE_RING_DELAY_MS,
+              kind: 'arrive',
+            });
+          }
+        } else {
+          // A dead end, or the goal itself: the router still answers, it
+          // just has nothing new to forward to.
+          flashesRef.current.push({ nodeId: current, startedAt: now, kind: 'arrive' });
+        }
       }
+
+      // Scrubbing backwards (or jumping) shrinks the known set — drop any
+      // effects mid-flight so the map snaps cleanly to the scrubbed-to state
+      // instead of finishing animations for a step that's no longer showing.
+      if (known.size < knownNodesRef.current.size) {
+        probesRef.current = [];
+        flashesRef.current = [];
+      }
+
+      knownNodesRef.current = known;
+      deliveredPathRef.current = step?.done ? step.finalPath : [];
       if (current) prevCurrentRef.current = current;
     }
 
@@ -520,14 +679,21 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
     };
   }, [start, goal, step]);
 
-  // Ambient redraw loop so the flowing-dash "data transfer" overlay keeps
-  // animating even while the algorithm is paused on a single step.
+  // Every effect is drawn in the afterDrawing hook, so this loop is the
+  // animation's clock. It runs at full frame rate while anything is moving —
+  // probes and rings need it to look smooth — and idles at ~12fps when the
+  // map is static, rather than burning a redraw every frame on a still image.
   useEffect(() => {
     let rafId = 0;
     let lastTime = 0;
 
     const loop = (time: number) => {
-      if (time - lastTime > 40) {
+      const busy =
+        probesRef.current.length > 0 ||
+        flashesRef.current.length > 0 ||
+        deliveredPathRef.current.length > 0;
+
+      if (busy || time - lastTime > 80) {
         networkRef.current?.redraw();
         lastTime = time;
       }
@@ -540,7 +706,6 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
 
   useEffect(() => {
     return () => {
-      cancelHopRef.current();
       networkRef.current?.destroy();
       networkRef.current = null;
     };

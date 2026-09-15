@@ -11,7 +11,7 @@ import {
   TbPlayerTrackPrevFilled,
 } from 'react-icons/tb';
 import RomaniaMap from './RomaniaMap';
-import type { SearchTraceStep } from '../lib/routePath';
+import type { SearchTraceStep } from '../lib/searchApi';
 
 type SearchPlayerProps = {
   title: string;

@@ -10,10 +10,11 @@ import { cityPositions } from '../lib/cityPositions';
 // Hand-plotted positions as a percentage of the viewport (matching the map
 // photo, which is `fill` + `object-fit: cover` across the full 100vw x 100vh
 // main — so x% of window.innerWidth / y% of window.innerHeight lands exactly
-// on that spot in the photo). Shared with RomaniaMap.tsx (via
-// components/cityPositions.ts) so both maps stay in sync; see
-// computeNodePixelPositions() for how percent turns into the exact pixel
-// position each render.
+// on that spot in the photo). This list is specific to THIS page — see the
+// comment in lib/cityPositions.ts for why it's no longer shared with
+// RomaniaMap.tsx (components/RomaniaMap.tsx has its own list in
+// lib/romaniaMapCityPositions.ts instead); see computeNodePixelPositions()
+// below for how percent turns into the exact pixel position each render.
 const initialNodes = cityPositions;
 
 const cityNames = initialNodes.map((node) => node.id);
@@ -258,12 +259,6 @@ export default function VisMap() {
 
   const [selection, setSelection] = useState({ start: '', goal: '' });
 
-  // DEV HELPER — move your mouse over the map and read the live xPct/yPct
-  // readout in the bottom-left corner to hand-place nodes in `initialNodes`
-  // above. Safe to delete this whole block (and the readout in the JSX
-  // below) once you're done repositioning.
-  const [cursorPct, setCursorPct] = useState<{ x: number; y: number } | null>(null);
-
   // Prefill Start/Goal from the URL (?start=..&goal=..) — used when arriving
   // back from the results page via "Back to Map", so the user can tweak one
   // city and re-run instead of starting from scratch. Declared before the
@@ -471,7 +466,7 @@ export default function VisMap() {
 
   useEffect(() => {
     if (!nodesDataSetRef.current) return;
-    
+
     const updatedNodes = initialNodes.map((node) => ({
       id: node.id,
       ...nodeVisualForSelection(node.id, selection),
@@ -513,12 +508,6 @@ export default function VisMap() {
   return (
     <main
       className={pixelFont.className}
-      onMouseMove={(event) => {
-        setCursorPct({
-          x: (event.clientX / window.innerWidth) * 100,
-          y: (event.clientY / window.innerHeight) * 100,
-        });
-      }}
       style={{
         position: 'relative',
         boxSizing: 'border-box',
@@ -717,30 +706,6 @@ export default function VisMap() {
           <div ref={containerRef} style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', opacity: 0 }} />
         </aside>
       </section>
-
-      {/* DEV HELPER readout — delete along with the mouseMove handler above
-          and the cursorPct state once you're done placing nodes. */}
-      {cursorPct && (
-        <div
-          aria-hidden
-          style={{
-            position: 'fixed',
-            left: '10px',
-            bottom: '10px',
-            zIndex: 50,
-            padding: '8px 12px',
-            borderRadius: '8px',
-            background: 'rgba(0,0,0,0.85)',
-            border: '1px solid rgba(34,211,238,0.4)',
-            color: '#4ade80',
-            fontSize: '12px',
-            fontFamily: 'monospace',
-            pointerEvents: 'none',
-          }}
-        >
-          xPct: {cursorPct.x.toFixed(1)}, yPct: {cursorPct.y.toFixed(1)}
-        </div>
-      )}
     </main>
   );
 }

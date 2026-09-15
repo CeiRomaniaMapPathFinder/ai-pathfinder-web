@@ -10,6 +10,7 @@ import {
   MapLegendCard,
   RunBothButton,
   SearchAnimationProvider,
+  SearchStatusNote,
   VerdictCard,
 } from '../../components/SearchAnimationState';
 import { pixelFont } from '../../lib/pixelNetworkTheme';
@@ -62,6 +63,9 @@ export default async function PageTwo({ searchParams }: PageTwoProps) {
             </span>
             <span className="truncate font-bold text-[#22d3ee]">· {routeText}</span>
           </h1>
+
+          {/* Only visible while the backend request is in flight or failed. */}
+          <SearchStatusNote />
 
           {/* ADDED: drives both panels' playback together (see RunBothButton
               for the toggle-to-"Reset Both" behavior once both are done). */}

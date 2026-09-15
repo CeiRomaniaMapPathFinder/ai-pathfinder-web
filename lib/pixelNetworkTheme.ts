@@ -110,26 +110,3 @@ export function buildDeviceIcon(role: DeviceRole, tone: DeviceTone): string {
   return uri;
 }
 
-let packetIconCache: string | null = null;
-
-export function buildPacketIcon(): string {
-  if (packetIconCache) return packetIconCache;
-
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="32" height="32" shape-rendering="crispEdges">
-    <defs>
-      <filter id="pglow" x="-80%" y="-80%" width="260%" height="260%">
-        <feGaussianBlur stdDeviation="1.4" result="b" />
-        <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-      </filter>
-    </defs>
-    <rect x="6" y="6" width="4" height="4" fill="#a5f3fc" filter="url(#pglow)" />
-    <rect x="7" y="7" width="2" height="2" fill="#ffffff" />
-  </svg>`;
-
-  packetIconCache = svgToDataUri(svg);
-  return packetIconCache;
-}
-
-export const NETWORK_CABLE_COLOR = '#22d3ee';
-export const NETWORK_CABLE_IDLE_COLOR = '#1e293b';
-export const NETWORK_CABLE_HOVER_COLOR = '#67e8f9';

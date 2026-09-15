@@ -9,18 +9,48 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), sans-serif;
+}
+
+/* Thin cyan/teal scrollbar for scroll containers on the dark pixel-themed
+   pages (e.g. the results-page left sidebar), instead of the default grey
+   browser scrollbar. */
+.cyan-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(34, 211, 238, 0.45) rgba(10, 18, 32, 0.4);
+}
+
+.cyan-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.cyan-scrollbar::-webkit-scrollbar-track {
+  background: rgba(10, 18, 32, 0.4);
+  border-radius: 999px;
+}
+
+.cyan-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(34, 211, 238, 0.45);
+  border-radius: 999px;
+}
+
+.cyan-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(103, 232, 249, 0.65);
+}
+
+/* Force vis-network's internally-created wrapper div + canvas to always
+   match their container's box exactly (100%/100%), even if vis-network's
+   own JS-computed inline pixel sizing lags a frame behind a flex/CSS layout
+   change (e.g. right after the container's height changes) — closes any gap
+   between the map graphic and the bottom of its card. */
+.vis-fill,
+.vis-fill > div,
+.vis-fill canvas {
+  width: 100% !important;
+  height: 100% !important;
 }

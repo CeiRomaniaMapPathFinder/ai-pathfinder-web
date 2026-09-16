@@ -518,6 +518,8 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
       // refreshed separately by applyState().
       const applyLayout = () => {
         if (!containerRef.current || !networkRef.current) return;
+        const nodesDataSet = nodesDataSetRef.current;
+        if (!nodesDataSet) return;
         const rect = containerRef.current.getBoundingClientRect();
         if (rect.width === 0 || rect.height === 0) return;
 
@@ -530,7 +532,7 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
           y: (n.yPct / 100) * rect.height,
           size: iconSizeForRole(nodeRoleRef.current.get(n.id) ?? 'router', metrics),
         }));
-        nodesDataSetRef.current.update(positions);
+        nodesDataSet.update(positions);
         nodePixelPositionsRef.current = new Map(positions.map((p) => [p.id, { x: p.x, y: p.y }]));
 
         if (edgesDataSetRef.current) {

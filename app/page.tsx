@@ -325,14 +325,17 @@ export default function VisMap() {
         );
       }
 
+      const nodesDataSet = nodesDataSetRef.current;
+      const edgesDataSet = edgesDataSetRef.current;
+
       const data = {
-        nodes: nodesDataSetRef.current!,
-        edges: edgesDataSetRef.current!
+        nodes: nodesDataSet,
+        edges: edgesDataSet
       };
 
       const resetEdgeColors = () => {
-        const allEdges = edgesDataSetRef.current!.get();
-        edgesDataSetRef.current!.update(
+        const allEdges = edgesDataSet.get();
+        edgesDataSet.update(
           allEdges.map((edge) => ({
             id: edge.id,
             color: { color: idleEdgeColor, highlight: idleEdgeColor, hover: idleEdgeColor }
@@ -341,9 +344,11 @@ export default function VisMap() {
       };
 
       const colorConnectedEdges = (nodeId: IdType) => {
-        const connectedEdgeIds = networkRef.current!.getConnectedEdges(nodeId);
+        const network = networkRef.current;
+        if (!network) return;
+        const connectedEdgeIds = network.getConnectedEdges(nodeId);
 
-        edgesDataSetRef.current!.update(
+        edgesDataSet.update(
           connectedEdgeIds.map((edgeId) => ({
             id: edgeId,
             color: { color: hoverEdgeColor, highlight: hoverEdgeColor, hover: hoverEdgeColor }
@@ -389,7 +394,7 @@ export default function VisMap() {
         const rect = container.getBoundingClientRect();
         if (rect.width === 0 || rect.height === 0) return;
         const positions = computeNodePixelPositions(rect);
-        nodesDataSetRef.current!.update(positions);
+        nodesDataSet.update(positions);
         nodePixelPositionsRef.current = new Map(positions.map((p) => [p.id, { x: p.x, y: p.y }]));
         network.moveTo({ position: { x: rect.width / 2, y: rect.height / 2 }, scale: 1 });
         network.redraw();
@@ -436,7 +441,7 @@ export default function VisMap() {
           const selectedPathEdges = findPathEdgeIds(selectionRef.current.start, selectionRef.current.goal);
 
           if (selectedPathEdges.length > 0) {
-            edgesDataSetRef.current!.update(
+            edgesDataSet.update(
               selectedPathEdges.map((edgeId: number) => ({
                 id: edgeId,
                 color: { color: activePathColor, highlight: activePathColor, hover: activePathColor }
@@ -483,11 +488,12 @@ export default function VisMap() {
 
     nodesDataSetRef.current.update(updatedNodes);
 
-    if (!edgesDataSetRef.current) return;
+    const edgesDataSet = edgesDataSetRef.current;
+    if (!edgesDataSet) return;
 
     const resetEdgeColors = () => {
-      const allEdges = edgesDataSetRef.current.get();
-      edgesDataSetRef.current.update(
+      const allEdges = edgesDataSet.get();
+      edgesDataSet.update(
         allEdges.map((edge) => ({
           id: edge.id,
           color: { color: idleEdgeColor, highlight: idleEdgeColor, hover: idleEdgeColor }
@@ -505,7 +511,7 @@ export default function VisMap() {
     resetEdgeColors();
 
     if (selectedPathEdges.length > 0) {
-      edgesDataSetRef.current.update(
+      edgesDataSet.update(
         selectedPathEdges.map((edgeId: number) => ({
           id: edgeId,
           color: { color: activePathColor, highlight: activePathColor, hover: activePathColor }

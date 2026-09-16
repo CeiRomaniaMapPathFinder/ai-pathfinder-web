@@ -11,6 +11,12 @@ import {
   type DeviceRole,
   type DeviceTone,
 } from '../lib/pixelNetworkTheme';
+import type {
+  DataSet,
+  Edge as VisEdge,
+  Network,
+  Node as VisNode,
+} from 'vis-network/standalone';
 
 type RomaniaMapProps = {
   start?: string;
@@ -400,9 +406,9 @@ function drawDeliveryStream(
 
 export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const networkRef = useRef<any>(null);
-  const nodesDataSetRef = useRef<any>(null);
-  const edgesDataSetRef = useRef<any>(null);
+  const networkRef = useRef<Network | null>(null);
+  const nodesDataSetRef = useRef<DataSet<VisNode> | null>(null);
+  const edgesDataSetRef = useRef<DataSet<VisEdge> | null>(null);
   const pathIdsRef = useRef<Set<number>>(new Set());
   const routeKeyRef = useRef<string>('');
   const prevCurrentRef = useRef<string | null>(null);
@@ -425,7 +431,9 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
   const nodeRoleRef = useRef<Map<string, DeviceRole>>(new Map());
   const metricsRef = useRef<SizeMetrics>(DEFAULT_METRICS);
   const scaleRef = useRef(scale);
-  scaleRef.current = scale;
+  useEffect(() => {
+    scaleRef.current = scale;
+  }, [scale]);
 
   // Create the network once, then only push incremental DataSet updates.
   // (Recreating vis-network on every step, as before, would also throw away

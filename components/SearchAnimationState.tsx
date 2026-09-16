@@ -113,6 +113,8 @@ export function SearchAnimationProvider({ start, goal, children }: ProviderProps
 
   useEffect(() => {
     if (!start || !goal) {
+      // resets state when start/goal go missing (e.g. cleared) — not initial state
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setResult(null);
       setStatus('idle');
       setError(null);
@@ -384,11 +386,11 @@ export function HeuristicExplainerCard() {
         </p>
         <p>
           <span className="font-semibold text-[#e2f8ff]">A*</span> ranks nodes by f(n) = g(n) + h(n):
-          g(n) is the cost already spent, h(n) is a heuristic estimate of what's left — normally the
+          g(n) is the cost already spent, h(n) is a heuristic estimate of what&apos;s left — normally the
           straight-line distance to the goal city, so it favors moves that head the right direction.
         </p>
         <p className="text-[#5b7a94]">
-          Note: this demo's heuristic is currently h(n) = 0, so "Custom Heuristic Search" behaves like
+          Note: this demo&apos;s heuristic is currently h(n) = 0, so &quot;Custom Heuristic Search&quot; behaves like
           uniform-cost search rather than true straight-line-distance A*.
         </p>
       </div>

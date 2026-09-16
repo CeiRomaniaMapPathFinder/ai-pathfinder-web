@@ -6,6 +6,13 @@ import { TbCircleNumber1Filled, TbPlayerPlayFilled } from "react-icons/tb";
 import { VscLocation } from "react-icons/vsc";
 import { buildDeviceIcon, pixelFont } from '../lib/pixelNetworkTheme';
 import { cityPositions } from '../lib/cityPositions';
+import type {
+  DataSet,
+  Edge as VisEdge,
+  IdType,
+  Network,
+  Node as VisNode,
+} from 'vis-network/standalone';
 
 // Hand-plotted positions as a percentage of the viewport (matching the map
 // photo, which is `fill` + `object-fit: cover` across the full 100vw x 100vh
@@ -248,10 +255,10 @@ export default function VisMap() {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const previewRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const networkRef = useRef<any>(null);
-  const previewNetworksRef = useRef<any[]>([]);
-  const nodesDataSetRef = useRef<any>(null);
-  const edgesDataSetRef = useRef<any>(null);
+  const networkRef = useRef<Network | null>(null);
+  const previewNetworksRef = useRef<Network[]>([]);
+  const nodesDataSetRef = useRef<DataSet<VisNode> | null>(null);
+  const edgesDataSetRef = useRef<DataSet<VisEdge> | null>(null);
   const selectionRef = useRef({ start: '', goal: '' });
   // Latest on-screen pixel position per city, kept in sync by
   // alignPreviewNetwork() and read every frame by drawCityLabels().
@@ -276,6 +283,8 @@ export default function VisMap() {
 
     const next = { start: nextStart, goal: nextGoal === nextStart ? '' : nextGoal };
     selectionRef.current = next;
+    // window is undefined during SSR, so this has to stay an effect (not a useState initializer) or hydration mismatches
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelection(next);
   }, []);
 
@@ -317,25 +326,25 @@ export default function VisMap() {
       }
 
       const data = {
-        nodes: nodesDataSetRef.current,
-        edges: edgesDataSetRef.current
+        nodes: nodesDataSetRef.current!,
+        edges: edgesDataSetRef.current!
       };
 
       const resetEdgeColors = () => {
-        const allEdges = edgesDataSetRef.current.get();
-        edgesDataSetRef.current.update(
-          allEdges.map((edge: any) => ({
+        const allEdges = edgesDataSetRef.current!.get();
+        edgesDataSetRef.current!.update(
+          allEdges.map((edge) => ({
             id: edge.id,
             color: { color: idleEdgeColor, highlight: idleEdgeColor, hover: idleEdgeColor }
           }))
         );
       };
 
-      const colorConnectedEdges = (nodeId: string) => {
-        const connectedEdgeIds = networkRef.current.getConnectedEdges(nodeId);
+      const colorConnectedEdges = (nodeId: IdType) => {
+        const connectedEdgeIds = networkRef.current!.getConnectedEdges(nodeId);
 
-        edgesDataSetRef.current.update(
-          connectedEdgeIds.map((edgeId: string) => ({
+        edgesDataSetRef.current!.update(
+          connectedEdgeIds.map((edgeId) => ({
             id: edgeId,
             color: { color: hoverEdgeColor, highlight: hoverEdgeColor, hover: hoverEdgeColor }
           }))
@@ -376,11 +385,11 @@ export default function VisMap() {
       // every node's xPct/yPct into a pixel position local to that
       // container, push those into the (shared) node DataSet, then center
       // the view at scale 1 so network-unit == on-screen pixel exactly.
-      const alignPreviewNetwork = (network: any, container: HTMLDivElement) => {
+      const alignPreviewNetwork = (network: Network, container: HTMLDivElement) => {
         const rect = container.getBoundingClientRect();
         if (rect.width === 0 || rect.height === 0) return;
         const positions = computeNodePixelPositions(rect);
-        nodesDataSetRef.current.update(positions);
+        nodesDataSetRef.current!.update(positions);
         nodePixelPositionsRef.current = new Map(positions.map((p) => [p.id, { x: p.x, y: p.y }]));
         network.moveTo({ position: { x: rect.width / 2, y: rect.height / 2 }, scale: 1 });
         network.redraw();
@@ -399,7 +408,7 @@ export default function VisMap() {
       });
       previewNetworksRef.current.forEach((network, i) => alignPreviewNetwork(network, previewContainers[i]));
 
-      const handleNodeClick = (params: any) => {
+      const handleNodeClick = (params: { nodes: IdType[] }) => {
         if (params.nodes.length === 0) return;
 
         const nodeId = String(params.nodes[0]);
@@ -416,7 +425,7 @@ export default function VisMap() {
         setSelection(nextSelection);
       };
 
-      networkRef.current.on('hoverNode', (params: any) => {
+      networkRef.current.on('hoverNode', (params: { node: IdType }) => {
         if (selectionRef.current.start && selectionRef.current.goal) return;
         resetEdgeColors();
         colorConnectedEdges(params.node);
@@ -427,7 +436,7 @@ export default function VisMap() {
           const selectedPathEdges = findPathEdgeIds(selectionRef.current.start, selectionRef.current.goal);
 
           if (selectedPathEdges.length > 0) {
-            edgesDataSetRef.current.update(
+            edgesDataSetRef.current!.update(
               selectedPathEdges.map((edgeId: number) => ({
                 id: edgeId,
                 color: { color: activePathColor, highlight: activePathColor, hover: activePathColor }
@@ -479,7 +488,7 @@ export default function VisMap() {
     const resetEdgeColors = () => {
       const allEdges = edgesDataSetRef.current.get();
       edgesDataSetRef.current.update(
-        allEdges.map((edge: any) => ({
+        allEdges.map((edge) => ({
           id: edge.id,
           color: { color: idleEdgeColor, highlight: idleEdgeColor, hover: idleEdgeColor }
         }))

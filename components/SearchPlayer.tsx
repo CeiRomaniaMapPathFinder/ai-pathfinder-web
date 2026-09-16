@@ -126,6 +126,8 @@ export default function SearchPlayer({
   }, [isPlaying, maxIndex, pause, trace.length]);
 
   useEffect(() => {
+    // resets playback whenever start/goal/trace change out from under this panel
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     pause();
     setStepIndex(0);
   }, [start, goal, trace, pause]);
@@ -142,6 +144,8 @@ export default function SearchPlayer({
     if (trace.length <= 1 || remainingSteps <= 0) return;
 
     syncedStepDurationRef.current = RUN_BOTH_DURATION_MS / remainingSteps;
+    // reacts to the shared runToken signal firing, guarded above against mount
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsPlaying(true);
     // Deliberately only depends on runToken: this should read whatever
     // stepIndex/maxIndex/trace this panel currently has at the moment the

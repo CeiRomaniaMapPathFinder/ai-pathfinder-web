@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { getPathEdgeIds, routeEdges } from '../lib/routePath';
 import type { SearchTraceStep } from '../lib/searchApi';
-import { romaniaMapCityPositions } from '../lib/romaniaMapCityPositions';
+import { cityPositions } from '../lib/cityPositions';
+import { computeMapBox, mapEdgeFadeStyle, projectCity, sameMapBox, type MapBox } from '../lib/mapProjection';
 import {
   buildDeviceIcon,
   pixelFont,
@@ -43,7 +44,7 @@ const EFFECT_GC_MS = 1200; // drop spent effects after this long
 // --- Proportional sizing -----------------------------------------------
 // Icon/label/edge sizes are NOT fixed pixel constants — they're computed
 // every time this map's container is (re)measured, as a fraction of the
-// container's own width. BASE_* below are the sizes that looked right on
+// width the map photo is drawn at (see computeMapBoxForPanel). BASE_* below are the sizes that looked right on
 // the full-viewport city-picker map (app/page.tsx), tuned against
 // REFERENCE_WIDTH; a smaller card (like the BFS/A* panels on page2) gets a
 // proportionally smaller — but never illegibly small, thanks to the floors
@@ -120,11 +121,10 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-// containerWidth drives the scale (not min-dimension) because these panels
-// are always wider than tall, so width is the more stable signal — height
-// swings a lot more with sidebar/window layout.
-function computeSizeMetrics(containerWidth: number, manualScale: number): SizeMetrics {
-  const autoScale = clamp(containerWidth / REFERENCE_WIDTH, MIN_AUTO_SCALE, MAX_AUTO_SCALE);
+// Scales with how wide the map is drawn, so icons and labels keep the same
+// size relative to the map artwork whatever shape the panel is.
+function computeSizeMetrics(mapWidth: number, manualScale: number): SizeMetrics {
+  const autoScale = clamp(mapWidth / REFERENCE_WIDTH, MIN_AUTO_SCALE, MAX_AUTO_SCALE);
   const s = autoScale * (Number.isFinite(manualScale) && manualScale > 0 ? manualScale : 1);
   const scaled = (base: number, floor: number) => Math.max(base * s, floor);
 
@@ -147,6 +147,21 @@ function computeSizeMetrics(containerWidth: number, manualScale: number): SizeMe
   };
 }
 
+// Room to keep around the outermost cities so their icon and label stay
+// inside the panel. Labels use a pixel font, so a glyph is ~1em wide and the
+// longest edge label ("Timisoara") needs about 5em either side of its node;
+// above a node there's only half an icon, below it the icon and the label.
+function computeMapBoxForPanel(width: number, height: number, metrics: SizeMetrics) {
+  const side = metrics.labelFontSize * 5 + metrics.labelPillPadX;
+  const pad = {
+    left: side,
+    right: side,
+    top: metrics.deviceIconSize / 2 + 2,
+    bottom: metrics.labelOffsetY + metrics.labelFontSize + metrics.labelPillPadY * 2,
+  };
+  return computeMapBox(width, height, cityPositions, { left: 0, top: 0, right: width, bottom: height }, pad);
+}
+
 function iconSizeForRole(role: DeviceRole, metrics: SizeMetrics) {
   return role === 'router' ? metrics.routerIconSize : metrics.deviceIconSize;
 }
@@ -167,7 +182,7 @@ function computeNodeStates(
   const frontier = new Set(step?.frontier ?? []);
   const current = step?.currentNode ?? null;
 
-  return romaniaMapCityPositions.map((node) => {
+  return cityPositions.map((node) => {
     let role: DeviceRole = 'router';
     let tone: DeviceTone = 'idle';
 
@@ -205,7 +220,7 @@ function drawCityLabels(
   ctx.textBaseline = 'top';
   ctx.font = `${metrics.labelFontSize}px ${pixelFont.style.fontFamily}`;
 
-  for (const node of romaniaMapCityPositions) {
+  for (const node of cityPositions) {
     const pos = positions.get(node.id);
     if (!pos) continue;
 
@@ -406,6 +421,9 @@ function drawDeliveryStream(
 
 export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  // Where the photo is drawn inside the panel — null until measured, when it
+  // falls back to plain object-fit: cover.
+  const [mapBox, setMapBox] = useState<MapBox | null>(null);
   const networkRef = useRef<Network | null>(null);
   const nodesDataSetRef = useRef<DataSet<VisNode> | null>(null);
   const edgesDataSetRef = useRef<DataSet<VisEdge> | null>(null);
@@ -523,13 +541,17 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
         const rect = containerRef.current.getBoundingClientRect();
         if (rect.width === 0 || rect.height === 0) return;
 
-        const metrics = computeSizeMetrics(rect.width, scaleRef.current);
+        // Padding depends on label size and label size on the map's drawn
+        // width, so size the box from the panel's metrics first, then take
+        // the final metrics from the map that actually got drawn.
+        const box = computeMapBoxForPanel(rect.width, rect.height, computeSizeMetrics(rect.width, scaleRef.current));
+        setMapBox((prev) => (sameMapBox(prev, box) ? prev : box));
+        const metrics = computeSizeMetrics(box.width, scaleRef.current);
         metricsRef.current = metrics;
 
-        const positions = romaniaMapCityPositions.map((n) => ({
+        const positions = cityPositions.map((n) => ({
           id: n.id,
-          x: (n.xPct / 100) * rect.width,
-          y: (n.yPct / 100) * rect.height,
+          ...projectCity(n, box),
           size: iconSizeForRole(nodeRoleRef.current.get(n.id) ?? 'router', metrics),
         }));
         nodesDataSet.update(positions);
@@ -725,17 +747,27 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
     <div
       className={`relative h-full w-full overflow-hidden rounded-xl border border-cyan-500/30 bg-[#060a13] shadow-[0_0_25px_rgba(34,211,238,0.15)] ${pixelFont.className}`}
     >
-      {/* Same background photo as the city-picker map, pinned to this panel's
-          own box instead of the full viewport — see applyLayout() above. */}
-      <Image
-        src="/images/romania-fantasy-map.png"
-        alt=""
-        aria-hidden
-        fill
-        priority
-        sizes="(max-width: 1200px) 100vw, 900px"
-        style={{ objectFit: 'cover', zIndex: 0 }}
-      />
+      {/* Same background photo as the city-picker map, placed inside this
+          panel by the same box the nodes use — see applyLayout() above. */}
+      <div
+        className="pointer-events-none absolute"
+        style={{
+          zIndex: 0,
+          ...(mapBox
+            ? { left: mapBox.left, top: mapBox.top, width: mapBox.width, height: mapBox.height, ...mapEdgeFadeStyle(mapBox) }
+            : { inset: 0 }),
+        }}
+      >
+        <Image
+          src="/images/romania-fantasy-map.png"
+          alt=""
+          aria-hidden
+          fill
+          priority
+          sizes="(max-width: 1200px) 100vw, 900px"
+          style={{ objectFit: mapBox ? 'fill' : 'cover' }}
+        />
+      </div>
       <div ref={containerRef} className="vis-fill relative h-full w-full" style={{ zIndex: 1 }} />
     </div>
   );

@@ -2,10 +2,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { TbCircleNumber1Filled, TbPlayerPlayFilled } from "react-icons/tb";
+import { TbChevronDown, TbCircleNumber1Filled, TbPlayerPlayFilled } from "react-icons/tb";
 import { VscLocation } from "react-icons/vsc";
 import { buildDeviceIcon, pixelFont } from '../lib/pixelNetworkTheme';
 import { cityPositions } from '../lib/cityPositions';
+import { computeMapBox, mapEdgeFadeStyle, projectCity, sameMapBox, type MapBox } from '../lib/mapProjection';
 import type {
   DataSet,
   Edge as VisEdge,
@@ -14,28 +15,34 @@ import type {
   Node as VisNode,
 } from 'vis-network/standalone';
 
-// Hand-plotted positions as a percentage of the viewport (matching the map
-// photo, which is `fill` + `object-fit: cover` across the full 100vw x 100vh
-// main — so x% of window.innerWidth / y% of window.innerHeight lands exactly
-// on that spot in the photo). This list is specific to THIS page — see the
-// comment in lib/cityPositions.ts for why it's no longer shared with
-// RomaniaMap.tsx (components/RomaniaMap.tsx has its own list in
-// lib/romaniaMapCityPositions.ts instead); see computeNodePixelPositions()
-// below for how percent turns into the exact pixel position each render.
+// City positions are a percentage of the map photo (lib/cityPositions.ts);
+// computeNodePixelPositions() below turns them into pixels for wherever the
+// photo is drawn on this screen.
 const initialNodes = cityPositions;
 
 const cityNames = initialNodes.map((node) => node.id);
 
-// The photo fills the whole viewport, but each visible network container
-// only covers part of it (e.g. the graph column, not the sidebar) — so a
-// node's local pixel position is its viewport pixel position minus that
-// container's own offset from the viewport origin.
-function computeNodePixelPositions(containerRect: { left: number; top: number }) {
-  return initialNodes.map((n) => ({
-    id: n.id,
-    x: (n.xPct / 100) * window.innerWidth - containerRect.left,
-    y: (n.yPct / 100) * window.innerHeight - containerRect.top,
-  }));
+// Room kept between the outermost cities and the graph area's edges (px):
+// half the widest edge label ("Timisoara") on the sides, half an icon above,
+// icon + label below.
+const MAP_PAD = { left: 60, right: 60, top: 16, bottom: 48 };
+
+// Where the photo sits in the full-viewport main (see lib/mapProjection.ts).
+// Nodes are only visible inside the graph container (not under the title or
+// the sidebar), so that's the area the cities have to fit in.
+function computeViewportMapBox(graphRect: DOMRect) {
+  return computeMapBox(window.innerWidth, window.innerHeight, initialNodes, graphRect, MAP_PAD);
+}
+
+// The photo is positioned against the whole viewport, but each visible
+// network container only covers part of it (e.g. the graph column, not the
+// sidebar) — so a node's local pixel position is its viewport pixel position
+// minus that container's own offset from the viewport origin.
+function computeNodePixelPositions(mapBox: MapBox, containerRect: { left: number; top: number }) {
+  return initialNodes.map((n) => {
+    const { x, y } = projectCity(n, mapBox);
+    return { id: n.id, x: x - containerRect.left, y: y - containerRect.top };
+  });
 }
 
 const initialEdges = [
@@ -265,6 +272,9 @@ export default function VisMap() {
   const nodePixelPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
 
   const [selection, setSelection] = useState({ start: '', goal: '' });
+  // null until measured on the client — the photo falls back to plain
+  // object-fit: cover for the first paint, which matches on most screens.
+  const [mapBox, setMapBox] = useState<MapBox | null>(null);
 
   // Prefill Start/Goal from the URL (?start=..&goal=..) — used when arriving
   // back from the results page via "Back to Map", so the user can tweak one
@@ -373,6 +383,11 @@ export default function VisMap() {
           color: { color: idleEdgeColor, highlight: hoverEdgeColor, hover: hoverEdgeColor },
           width: 2,
           shadow: edgeShadow,
+          // Locked-down map, no physics — a 'dynamic' bezier's via-node only
+          // gets repositioned by a physics tick, so with physics off it stays
+          // wherever it was first placed (before layout even ran) and never
+          // catches up. Straight edges sidestep that entirely.
+          smooth: false,
         },
         nodes: {
           shape: 'image',
@@ -393,7 +408,9 @@ export default function VisMap() {
       const alignPreviewNetwork = (network: Network, container: HTMLDivElement) => {
         const rect = container.getBoundingClientRect();
         if (rect.width === 0 || rect.height === 0) return;
-        const positions = computeNodePixelPositions(rect);
+        const box = computeViewportMapBox(rect);
+        setMapBox((prev) => (sameMapBox(prev, box) ? prev : box));
+        const positions = computeNodePixelPositions(box, rect);
         nodesDataSet.update(positions);
         nodePixelPositionsRef.current = new Map(positions.map((p) => [p.id, { x: p.x, y: p.y }]));
         network.moveTo({ position: { x: rect.width / 2, y: rect.height / 2 }, scale: 1 });
@@ -537,15 +554,26 @@ export default function VisMap() {
       {/* The photo itself is the background now — no dark scrim over it.
           Legibility comes from the icon glow/outline + text-stroke treatment
           instead of dimming the map. */}
-      <Image
-        src="/images/romania-fantasy-map.png"
-        alt=""
-        aria-hidden
-        fill
-        priority
-        sizes="100vw"
-        style={{ objectFit: 'cover', zIndex: 0 }}
-      />
+      <div
+        style={{
+          position: 'absolute',
+          zIndex: 0,
+          pointerEvents: 'none',
+          ...(mapBox
+            ? { left: mapBox.left, top: mapBox.top, width: mapBox.width, height: mapBox.height, ...mapEdgeFadeStyle(mapBox) }
+            : { inset: 0 }),
+        }}
+      >
+        <Image
+          src="/images/romania-fantasy-map.png"
+          alt=""
+          aria-hidden
+          fill
+          priority
+          sizes="100vw"
+          style={{ objectFit: mapBox ? 'fill' : 'cover' }}
+        />
+      </div>
 
       {/* No box here either — just a standout glowing title sitting on the map. */}
       <header
@@ -626,14 +654,21 @@ export default function VisMap() {
                   setSelection(nextSelection);
                 }}
                 style={{
-                  display: 'block', width: '100%', padding: '10px 10px 10px 36px',
+                  display: 'block', width: '100%', padding: '10px 32px 10px 36px',
                   border: '1px solid rgba(34,211,238,0.3)', borderRadius: '10px',
                   background: '#0b1220', color: '#e2f8ff', fontSize: '11px',
+                  WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none',
                 }}
               >
                 <option value="">Select city</option>
                 {cityNames.map((city) => <option key={city} value={city}>{city}</option>)}
               </select>
+              <TbChevronDown
+                size={14}
+                color="#7dd3fc"
+                aria-hidden="true"
+                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', zIndex: 1 }}
+              />
             </div>
           </label>
           <button
@@ -670,14 +705,21 @@ export default function VisMap() {
                   setSelection(nextSelection);
                 }}
                 style={{
-                  display: 'block', width: '100%', padding: '10px 10px 10px 36px',
+                  display: 'block', width: '100%', padding: '10px 32px 10px 36px',
                   border: '1px solid rgba(34,211,238,0.3)', borderRadius: '10px',
                   background: '#0b1220', color: '#e2f8ff', fontSize: '11px',
+                  WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none',
                 }}
               >
                 <option value="">Select city</option>
                 {cityNames.filter((city) => city !== selection.start).map((city) => <option key={city} value={city}>{city}</option>)}
               </select>
+              <TbChevronDown
+                size={14}
+                color="#7dd3fc"
+                aria-hidden="true"
+                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', zIndex: 1 }}
+              />
             </div>
           </label>
           <button

@@ -373,6 +373,11 @@ export default function VisMap() {
           color: { color: idleEdgeColor, highlight: hoverEdgeColor, hover: hoverEdgeColor },
           width: 2,
           shadow: edgeShadow,
+          // Locked-down map, no physics — a 'dynamic' bezier's via-node only
+          // gets repositioned by a physics tick, so with physics off it stays
+          // wherever it was first placed (before layout even ran) and never
+          // catches up. Straight edges sidestep that entirely.
+          smooth: false,
         },
         nodes: {
           shape: 'image',

@@ -104,7 +104,7 @@ export function buildDeviceIcon(role: DeviceRole, tone: DeviceTone): string {
   if (cached) return cached;
 
   const palette = TONE_COLORS[tone];
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="64" height="64" shape-rendering="crispEdges"><defs>${GLOW_DEFS}</defs>${haloGlow(palette)}${glyphByRole[role](palette)}</svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="32" height="32" shape-rendering="crispEdges"><defs>${GLOW_DEFS}</defs>${haloGlow(palette)}${glyphByRole[role](palette)}</svg>`;
   const uri = svgToDataUri(svg);
   iconCache.set(cacheKey, uri);
   return uri;

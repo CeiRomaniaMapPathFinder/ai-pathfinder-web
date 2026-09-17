@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { TbCircleNumber1Filled, TbPlayerPlayFilled } from "react-icons/tb";
+import { TbChevronDown, TbCircleNumber1Filled, TbPlayerPlayFilled } from "react-icons/tb";
 import { VscLocation } from "react-icons/vsc";
 import { buildDeviceIcon, pixelFont } from '../lib/pixelNetworkTheme';
 import { cityPositions } from '../lib/cityPositions';
@@ -631,14 +631,21 @@ export default function VisMap() {
                   setSelection(nextSelection);
                 }}
                 style={{
-                  display: 'block', width: '100%', padding: '10px 10px 10px 36px',
+                  display: 'block', width: '100%', padding: '10px 32px 10px 36px',
                   border: '1px solid rgba(34,211,238,0.3)', borderRadius: '10px',
                   background: '#0b1220', color: '#e2f8ff', fontSize: '11px',
+                  WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none',
                 }}
               >
                 <option value="">Select city</option>
                 {cityNames.map((city) => <option key={city} value={city}>{city}</option>)}
               </select>
+              <TbChevronDown
+                size={14}
+                color="#7dd3fc"
+                aria-hidden="true"
+                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', zIndex: 1 }}
+              />
             </div>
           </label>
           <button
@@ -675,14 +682,21 @@ export default function VisMap() {
                   setSelection(nextSelection);
                 }}
                 style={{
-                  display: 'block', width: '100%', padding: '10px 10px 10px 36px',
+                  display: 'block', width: '100%', padding: '10px 32px 10px 36px',
                   border: '1px solid rgba(34,211,238,0.3)', borderRadius: '10px',
                   background: '#0b1220', color: '#e2f8ff', fontSize: '11px',
+                  WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none',
                 }}
               >
                 <option value="">Select city</option>
                 {cityNames.filter((city) => city !== selection.start).map((city) => <option key={city} value={city}>{city}</option>)}
               </select>
+              <TbChevronDown
+                size={14}
+                color="#7dd3fc"
+                aria-hidden="true"
+                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', zIndex: 1 }}
+              />
             </div>
           </label>
           <button

@@ -38,9 +38,11 @@ CI runs `lint`, `typecheck` and a Docker build.
 ## Docker
 
 ```bash
-docker build --build-arg GIT_SHA=$(git rev-parse HEAD) -t pathfinder-web:local .
+docker build --build-arg GIT_SHA=$(git rev-parse HEAD) --build-arg NEXT_PUBLIC_API_URL=http://localhost:8080 -t pathfinder-web:local .
 docker run --rm -p 3000:3000 pathfinder-web:local
 ```
+
+`NEXT_PUBLIC_API_URL` has no default in the Dockerfile, so a local build needs the build arg.
 
 ## Deploy
 

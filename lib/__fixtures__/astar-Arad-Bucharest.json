@@ -1,0 +1,151 @@
+{
+  "totalNodes": 10,
+  "distance": 418,
+  "runtime": 0.073208,
+  "path": [
+    "Arad",
+    "Sibiu",
+    "Rimnicu Vilcea",
+    "Pitesti",
+    "Bucharest"
+  ],
+  "routes": {
+    "0": [
+      {
+        "town": "Arad",
+        "expandedAt": 0,
+        "gn": 0,
+        "hn": 453,
+        "fn": 453
+      },
+      {
+        "town": "Sibiu",
+        "expandedAt": 1,
+        "gn": 140,
+        "hn": 302,
+        "fn": 442
+      },
+      {
+        "town": "Timisoara",
+        "expandedAt": -1,
+        "gn": 118,
+        "hn": 584,
+        "fn": 702
+      },
+      {
+        "town": "Zerind",
+        "expandedAt": -1,
+        "gn": 75,
+        "hn": 531,
+        "fn": 606
+      }
+    ],
+    "1": [
+      {
+        "town": "Sibiu",
+        "expandedAt": 1,
+        "gn": 140,
+        "hn": 302,
+        "fn": 442
+      },
+      {
+        "town": "Arad",
+        "expandedAt": -1,
+        "gn": 280,
+        "hn": 453,
+        "fn": 733
+      },
+      {
+        "town": "Fagaras",
+        "expandedAt": -1,
+        "gn": 239,
+        "hn": 219,
+        "fn": 458
+      },
+      {
+        "town": "Oradea",
+        "expandedAt": -1,
+        "gn": 291,
+        "hn": 464,
+        "fn": 755
+      },
+      {
+        "town": "Rimnicu Vilcea",
+        "expandedAt": 2,
+        "gn": 220,
+        "hn": 212,
+        "fn": 432
+      }
+    ],
+    "2": [
+      {
+        "town": "Rimnicu Vilcea",
+        "expandedAt": 2,
+        "gn": 220,
+        "hn": 212,
+        "fn": 432
+      },
+      {
+        "town": "Craiova",
+        "expandedAt": -1,
+        "gn": 366,
+        "hn": 256,
+        "fn": 622
+      },
+      {
+        "town": "Pitesti",
+        "expandedAt": 3,
+        "gn": 317,
+        "hn": 106,
+        "fn": 423
+      },
+      {
+        "town": "Sibiu",
+        "expandedAt": -1,
+        "gn": 300,
+        "hn": 302,
+        "fn": 602
+      }
+    ],
+    "3": [
+      {
+        "town": "Pitesti",
+        "expandedAt": 3,
+        "gn": 317,
+        "hn": 106,
+        "fn": 423
+      },
+      {
+        "town": "Bucharest",
+        "expandedAt": 4,
+        "gn": 418,
+        "hn": 0,
+        "fn": 418
+      },
+      {
+        "town": "Craiova",
+        "expandedAt": -1,
+        "gn": 455,
+        "hn": 256,
+        "fn": 711
+      },
+      {
+        "town": "Rimnicu Vilcea",
+        "expandedAt": -1,
+        "gn": 414,
+        "hn": 212,
+        "fn": 626
+      }
+    ],
+    "4": [
+      {
+        "town": "Bucharest",
+        "expandedAt": 4,
+        "gn": 418,
+        "hn": 0,
+        "fn": 418
+      }
+    ]
+  },
+  "memoryUsageKb": 4.890625
+}

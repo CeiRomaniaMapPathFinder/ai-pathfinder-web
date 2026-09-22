@@ -1,0 +1,65 @@
+{
+  "routes": [
+    {
+      "start": "Arad",
+      "goal": "Bucharest",
+      "route": {
+        "0": [
+          { "name": "Arad", "g": 0, "h": 453, "f": 453, "expandedAt": 0 },
+          { "name": "Sibiu", "g": 140, "h": 302, "f": 442, "expandedAt": 1 },
+          { "name": "Timisoara", "g": 118, "h": 584, "f": 702, "expandedAt": -1 },
+          { "name": "Zerind", "g": 75, "h": 531, "f": 606, "expandedAt": -1 }
+        ],
+        "1": [
+          { "name": "Sibiu", "g": 140, "h": 302, "f": 442, "expandedAt": 1 },
+          { "name": "Arad", "g": 280, "h": 453, "f": 733, "expandedAt": -1 },
+          { "name": "Fagaras", "g": 239, "h": 219, "f": 458, "expandedAt": -1 },
+          { "name": "Oradea", "g": 291, "h": 464, "f": 755, "expandedAt": -1 },
+          { "name": "Rimnicu Vilcea", "g": 220, "h": 212, "f": 432, "expandedAt": 2 }
+        ],
+        "2": [
+          { "name": "Rimnicu Vilcea", "g": 220, "h": 212, "f": 432, "expandedAt": 2 },
+          { "name": "Sibiu", "g": 300, "h": 302, "f": 602, "expandedAt": -1 },
+          { "name": "Craiova", "g": 366, "h": 256, "f": 622, "expandedAt": -1 },
+          { "name": "Pitesti", "g": 317, "h": 106, "f": 423, "expandedAt": 3 }
+        ],
+        "3": [
+          { "name": "Pitesti", "g": 317, "h": 106, "f": 423, "expandedAt": 3 },
+          { "name": "Rimnicu Vilcea", "g": 414, "h": 212, "f": 626, "expandedAt": -1 },
+          { "name": "Craiova", "g": 455, "h": 256, "f": 711, "expandedAt": -1 },
+          { "name": "Bucharest", "g": 418, "h": 0, "f": 418, "expandedAt": 4 }
+        ]
+      }
+    },
+    {
+      "start": "Oradea",
+      "goal": "Bucharest",
+      "route": {
+        "0": [
+          { "name": "Oradea", "g": 0, "h": 464, "f": 464, "expandedAt": 0 },
+          { "name": "Zerind", "g": 71, "h": 531, "f": 602, "expandedAt": -1 },
+          { "name": "Sibiu", "g": 151, "h": 302, "f": 453, "expandedAt": 1 }
+        ],
+        "1": [
+          { "name": "Sibiu", "g": 151, "h": 302, "f": 453, "expandedAt": 1 },
+          { "name": "Arad", "g": 291, "h": 453, "f": 744, "expandedAt": -1 },
+          { "name": "Fagaras", "g": 250, "h": 219, "f": 469, "expandedAt": -1 },
+          { "name": "Oradea", "g": 302, "h": 464, "f": 766, "expandedAt": -1 },
+          { "name": "Rimnicu Vilcea", "g": 231, "h": 212, "f": 443, "expandedAt": 2 }
+        ],
+        "2": [
+          { "name": "Rimnicu Vilcea", "g": 231, "h": 212, "f": 443, "expandedAt": 2 },
+          { "name": "Sibiu", "g": 311, "h": 302, "f": 613, "expandedAt": -1 },
+          { "name": "Craiova", "g": 377, "h": 256, "f": 633, "expandedAt": -1 },
+          { "name": "Pitesti", "g": 328, "h": 106, "f": 434, "expandedAt": 3 }
+        ],
+        "3": [
+          { "name": "Pitesti", "g": 328, "h": 106, "f": 434, "expandedAt": 3 },
+          { "name": "Rimnicu Vilcea", "g": 425, "h": 212, "f": 637, "expandedAt": -1 },
+          { "name": "Craiova", "g": 466, "h": 256, "f": 722, "expandedAt": -1 },
+          { "name": "Bucharest", "g": 429, "h": 0, "f": 429, "expandedAt": 4 }
+        ]
+      }
+    }
+  ]
+}

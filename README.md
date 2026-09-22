@@ -31,6 +31,7 @@ CI runs `lint`, `typecheck` and a Docker build.
 | Variable | Set where |
 | --- | --- |
 | `NEXT_PUBLIC_API_URL` | `.env.local` for dev, GitHub repo variable for deploys |
+| `NEXT_PUBLIC_ASTAR_TREE_API_URL` | Full endpoint for the A* search tree page (`/page3`). Unset → serves `lib/mockAStarTreeResponse.json`. Contract in `lib/astarTreeApi.ts` |
 | `APP_COMMIT` | Docker build arg `GIT_SHA`, `unknown` locally |
 
 `NEXT_PUBLIC_API_URL` is baked into the bundle at build time. Setting it in Dokploy does nothing — change the repo variable and redeploy.

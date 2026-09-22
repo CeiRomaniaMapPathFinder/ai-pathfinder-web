@@ -1,0 +1,38 @@
+{
+  "routes": {
+    "0": [
+      "Sibiu",
+      "Timisoara",
+      "Zerind"
+    ],
+    "1": [
+      "Fagaras",
+      "Oradea",
+      "Rimnicu Vilcea"
+    ],
+    "2": [
+      "Lugoj"
+    ],
+    "3": [],
+    "4": [
+      "Bucharest"
+    ]
+  },
+  "totalNodes": 8,
+  "distance": 450,
+  "path": [
+    "Arad",
+    "Sibiu",
+    "Fagaras",
+    "Bucharest"
+  ],
+  "runtime": 0.0315,
+  "expanded": [
+    "Arad",
+    "Sibiu",
+    "Timisoara",
+    "Zerind",
+    "Fagaras"
+  ],
+  "memoryUsageKb": 1.90625
+}

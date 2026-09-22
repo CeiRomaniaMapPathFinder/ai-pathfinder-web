@@ -35,6 +35,8 @@ CI runs `lint`, `typecheck` and a Docker build.
 
 `NEXT_PUBLIC_API_URL` is baked into the bundle at build time. Setting it in Dokploy does nothing — change the repo variable and redeploy.
 
+To test against a real backend: run `ai-pathfinder-api` on port 8080, keep `.env.local`'s default, and run `pnpm dev` on port 3000 (backend CORS only allows that origin by default). Without a backend running, `pnpm dev` falls back to the fixture in `lib/mockSearchResponse.json`.
+
 ## Docker
 
 ```bash

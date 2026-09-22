@@ -704,11 +704,22 @@ function StepCard({ tree, view, goal }: { tree: SearchTree; view: StepView; goal
           Path Found
         </p>
         <p className="mt-3 text-[10px] leading-[1.9] text-[#bbf7d0]">{route.join(' → ')}</p>
-        <div className="mt-4 flex items-end justify-between border-t border-green-400/20 pt-3">
-          <span className="text-[9px] text-[#86efac]">Total cost</span>
-          <span className="text-[20px] font-bold text-[#dcfce7]" style={MONO}>
-            {g}
-          </span>
+        <div className="mt-4 grid grid-cols-[1.4fr_1fr_1fr] gap-2 border-t border-green-400/20 pt-4">
+          {[
+            { label: 'Total cost', value: g, big: true },
+            { label: 'Cities', value: route.length },
+            { label: 'Steps', value: view.step },
+          ].map((stat) => (
+            <div key={stat.label} className="flex flex-col items-center rounded-[8px] bg-[#0b1220] py-2.5">
+              <span className="text-[8px] text-[#86efac]">{stat.label}</span>
+              <span
+                className={`mt-1.5 font-bold text-[#dcfce7] ${stat.big ? 'text-[20px]' : 'text-[15px]'}`}
+                style={{ ...MONO, textShadow: stat.big ? '0 0 8px rgba(74,222,128,0.6)' : undefined }}
+              >
+                {stat.value}
+              </span>
+            </div>
+          ))}
         </div>
         <p className="mt-3 text-[9px] leading-[1.7] text-[#5b7a94]">
           {goal} had the lowest f in the queue ({f}), so A* stops — with an admissible h, nothing left in the queue can

@@ -12,12 +12,15 @@
 // Node names must match the ids in lib/cityPositions.ts exactly ("Rimnicu
 // Vilcea" with the space, that capitalisation) — a mismatch means the node
 // silently never lights up on the map.
-//
-// Until the backend exists, leave NEXT_PUBLIC_SEARCH_API_URL unset and this
-// serves the JSON fixture. Set the env var and it calls the real service
-// instead — no other file in the project changes.
 
 import mockSearchResponse from './mockSearchResponse.json';
+import {
+  describeFailure,
+  mapAStarResponse,
+  mapBfsResponse,
+  type AStarResponse,
+  type BfsResponse,
+} from './searchAdapter';
 
 /**
  * One frame of the animation: a snapshot of the search taken each time it
@@ -67,7 +70,7 @@ type MockSearchResponse = SearchComparisonResponse & { start: string; goal: stri
 
 const fixture = mockSearchResponse as MockSearchResponse;
 
-const API_URL = process.env.NEXT_PUBLIC_SEARCH_API_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 /** Fake network latency, so loading states actually get exercised in dev. */
 const FIXTURE_LATENCY_MS = 150;
@@ -119,15 +122,39 @@ export async function fetchSearchComparison(
   signal?: AbortSignal,
 ): Promise<SearchComparisonResponse> {
   if (!API_URL) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'NEXT_PUBLIC_API_URL is not set. It is inlined at build time, so rebuild with it set.',
+      );
+    }
+    console.warn('NEXT_PUBLIC_API_URL is not set — serving the offline fixture (Oradea → Bucharest only).');
     return normalize(await loadFixture(start, goal));
   }
 
-  const query = new URLSearchParams({ start, goal });
-  const response = await fetch(`${API_URL}?${query.toString()}`, { signal });
+  const base = API_URL.replace(/\/+$/, '');
+  const query = new URLSearchParams({ start, end: goal }).toString();
 
-  if (!response.ok) {
-    throw new Error(`Search backend returned ${response.status} ${response.statusText}`);
+  const [bfs, astar] = await Promise.all([
+    getJson<BfsResponse>(`${base}/api/blind-search?${query}`, base, signal),
+    getJson<AStarResponse>(`${base}/api/heuristic-search?${query}`, base, signal),
+  ]);
+
+  return normalize({
+    bfs: mapBfsResponse(bfs, start, goal),
+    astar: mapAStarResponse(astar, start),
+  });
+}
+
+async function getJson<T>(url: string, base: string, signal?: AbortSignal): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(url, { signal });
+  } catch (cause) {
+    if (signal?.aborted) throw cause;
+    throw new Error(`Could not reach the search backend at ${base}.`);
   }
 
-  return normalize((await response.json()) as SearchComparisonResponse);
+  const body: unknown = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(describeFailure(response.status, body));
+  return body as T;
 }

@@ -1,0 +1,15 @@
+{
+  "routes": {
+    "0": [
+      "Arad"
+    ]
+  },
+  "totalNodes": 1,
+  "distance": 0,
+  "path": [
+    "Arad"
+  ],
+  "runtime": 0.002541,
+  "expanded": [],
+  "memoryUsageKb": 0.5234375
+}

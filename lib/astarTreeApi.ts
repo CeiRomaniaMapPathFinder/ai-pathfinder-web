@@ -3,27 +3,28 @@
 // This is the ONLY file that knows how the search-tree page (app/page3)
 // talks to the backend. Everything the page draws — every box, every edge,
 // every f = g + h label and the step-by-step playback — is derived from the
-// `route` trace that arrives through here (see lib/searchTree.ts).
+// `routes` trace that arrives through here (see lib/searchTree.ts).
 //
 // The shape follows the backend's own trace, one list per expansion:
 //
-//   route = {
+//   routes = {
 //     0: [Arad(0,453,453|0),   Sibiu(140,302,442|1), Timisoara(…|-1), …],
 //     1: [Sibiu(140,302,442|1), Arad(280,453,733|-1), Fagaras(…|-1), …],
 //     …
 //   }
 //
-// i.e. route[step][0] is the node expanded at that step and the rest are the
+// i.e. routes[step][0] is the node expanded at that step and the rest are the
 // neighbours it generated, each carrying Name(g, h, f | expandedAt).
 // lib/mockAStarTreeResponse.json holds complete examples (Arad → Bucharest,
 // Oradea → Bucharest) — each entry of its `routes` is one real response.
 //
-// Until the backend is wired up, leave NEXT_PUBLIC_ASTAR_TREE_API_URL unset
-// and this serves the fixture. Set it to the endpoint URL and the page calls
-// the real service with ?start=…&goal=… — no other file changes.
+// Same backend, same env var as lib/searchApi.ts: NEXT_PUBLIC_API_URL, calling
+// ${API_URL}/api/heuristic-search. Unset in dev, this serves the fixture below;
+// unset in production, it throws instead.
 //
-// If the backend's JSON field names differ from the ones below, adapt them
-// in `toTreeEntry` — that single function is the whole mapping.
+// The backend's own field names (town, gn, hn, fn) are mapped to this page's
+// internal ones (name, g, h, f) in toTreeEntry — that single function is the
+// whole mapping, so a future field rename only touches this file.
 
 import mockAStarTreeResponse from './mockAStarTreeResponse.json';
 
@@ -47,45 +48,49 @@ export type RouteStep = TreeEntry[];
 export type AStarTreeResponse = {
   start: string;
   goal: string;
-  /** Indexed by step. route[i][0] is the node expanded at step i. */
-  route: RouteStep[];
+  /** Indexed by step. routes[i][0] is the node expanded at step i. */
+  routes: RouteStep[];
+  path: string[];
+  distance: number;
 };
 
 /**
- * Accepts the route either as an array of lists or as an object keyed by
+ * Accepts routes either as an array of lists or as an object keyed by
  * step number ({"0": [...], "1": [...]}) — the latter is what a Java
  * Map<Integer, List<Node>> serialises to with Jackson.
  */
-type RawRoute = unknown[] | Record<string, unknown>;
+type RawRoutes = unknown[] | Record<string, unknown>;
 
 type RawResponse = {
   start?: string;
   goal?: string;
-  route: RawRoute;
+  routes: RawRoutes;
+  path?: unknown;
+  distance?: unknown;
 };
 
 /** Maps one raw trace entry to a TreeEntry. Adjust field names here. */
 function toTreeEntry(raw: unknown): TreeEntry {
   const entry = raw as Record<string, unknown>;
-  const g = Number(entry.g);
-  const h = Number(entry.h);
+  const g = Number(entry.gn);
+  const h = Number(entry.hn);
 
   return {
-    name: String(entry.name),
+    name: String(entry.town),
     g,
     h,
-    // Tolerate a backend that omits f — it's always g + h.
-    f: entry.f === undefined ? g + h : Number(entry.f),
+    // Tolerate a backend that omits fn — it's always g + h.
+    f: entry.fn === undefined ? g + h : Number(entry.fn),
     expandedAt: entry.expandedAt === undefined ? -1 : Number(entry.expandedAt),
   };
 }
 
-function normalizeRoute(route: RawRoute): RouteStep[] {
-  const lists = Array.isArray(route)
-    ? route
-    : Object.keys(route)
+function normalizeRoutes(routes: RawRoutes): RouteStep[] {
+  const lists = Array.isArray(routes)
+    ? routes
+    : Object.keys(routes)
         .sort((a, b) => Number(a) - Number(b))
-        .map((key) => route[key]);
+        .map((key) => routes[key]);
 
   return lists.map((list) => (Array.isArray(list) ? list.map(toTreeEntry) : []));
 }
@@ -94,7 +99,9 @@ function normalize(raw: RawResponse, start: string, goal: string): AStarTreeResp
   return {
     start: raw.start ?? start,
     goal: raw.goal ?? goal,
-    route: normalizeRoute(raw.route),
+    routes: normalizeRoutes(raw.routes),
+    path: Array.isArray(raw.path) ? raw.path.map(String) : [],
+    distance: Number(raw.distance ?? NaN),
   };
 }
 
@@ -105,7 +112,7 @@ const fixtures = (mockAStarTreeResponse as { routes: SampleRoute[] }).routes;
 /** Routes the offline fixture can serve — used to offer them on errors. */
 export const SAMPLE_ROUTES: { start: string; goal: string }[] = fixtures.map(({ start, goal }) => ({ start, goal }));
 
-const API_URL = process.env.NEXT_PUBLIC_ASTAR_TREE_API_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 /** True when the page is running on fixture data instead of the backend. */
 export const USING_SAMPLE_DATA = !API_URL;
@@ -140,11 +147,18 @@ export async function fetchAStarTree(
   signal?: AbortSignal,
 ): Promise<AStarTreeResponse> {
   if (!API_URL) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'NEXT_PUBLIC_API_URL is not set. It is inlined at build time, so rebuild with it set.',
+      );
+    }
+    console.warn('NEXT_PUBLIC_API_URL is not set — serving the offline fixture.');
     return normalize(await loadFixture(start, goal), start, goal);
   }
 
-  const query = new URLSearchParams({ start, goal });
-  const response = await fetch(`${API_URL}?${query.toString()}`, { signal });
+  const base = API_URL.replace(/\/+$/, '');
+  const query = new URLSearchParams({ start, end: goal }).toString();
+  const response = await fetch(`${base}/api/heuristic-search?${query}`, { signal });
 
   if (!response.ok) {
     throw new Error(`Search backend returned ${response.status} ${response.statusText}`);

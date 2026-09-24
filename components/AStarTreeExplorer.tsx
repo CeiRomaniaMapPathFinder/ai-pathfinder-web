@@ -111,7 +111,7 @@ export default function AStarTreeExplorer({ start, goal }: AStarTreeExplorerProp
     fetchAStarTree(start, goal, controller.signal)
       .then((response) => {
         if (controller.signal.aborted) return;
-        setLoad({ status: 'ready', tree: buildSearchTree(response.route, response.goal) });
+        setLoad({ status: 'ready', tree: buildSearchTree(response.routes, response.goal) });
       })
       .catch((cause: unknown) => {
         if (controller.signal.aborted) return;
@@ -201,7 +201,7 @@ export default function AStarTreeExplorer({ start, goal }: AStarTreeExplorerProp
 
         {USING_SAMPLE_DATA && load.status === 'ready' && (
           <span
-            title="NEXT_PUBLIC_ASTAR_TREE_API_URL is not set, so this tree comes from lib/mockAStarTreeResponse.json"
+            title="NEXT_PUBLIC_API_URL is not set, so this tree comes from lib/mockAStarTreeResponse.json"
             className="shrink-0 rounded-md border border-amber-400/40 bg-amber-400/10 px-2 py-1 text-[8px] text-[#fbbf24]"
           >
             SAMPLE DATA

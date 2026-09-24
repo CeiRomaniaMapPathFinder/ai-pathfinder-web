@@ -130,26 +130,31 @@ function aStarSteps(res: AStarResponse, start: string): SearchTraceStep[] {
   const explored = new Set<string>();
   const steps: SearchTraceStep[] = [];
 
-  for (let k = 0; k < count; k++) {
+  // A*'s last list is the goal being popped again, which BFS never does with its goal — see the
+  // note in bfsSteps. Dropping it puts both counts on one scale: cities expanded, goal excluded.
+  const goal = res.path[res.path.length - 1];
+  const last = count > 1 ? count - 2 : count - 1;
+
+  for (let k = 0; k <= last; k++) {
     const current = routes[k][0];
     explored.add(current.town);
 
     const frontier = new Set<string>();
     for (let j = 0; j <= k; j++) {
       for (const child of routes[j].slice(1)) {
-        if ((child.expandedAt === -1 || child.expandedAt > k) && !explored.has(child.town)) {
+        if ((child.expandedAt === -1 || child.expandedAt > k) && !explored.has(child.town) && child.town !== goal) {
           frontier.add(child.town);
         }
       }
     }
 
-    const isLast = k === count - 1;
+    const isLast = k === last;
     steps.push(
       makeStep(
         current.town,
         [...frontier],
         [...explored],
-        pathAt(k),
+        isLast ? res.path : pathAt(k),
         isLast ? res.path : [],
         isLast ? res.distance : current.gn,
         isLast,

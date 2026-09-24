@@ -429,7 +429,7 @@ export function SearchStatusNote() {
 
   return (
     <span
-      className={`shrink-0 truncate text-[10px] ${
+      className={`min-w-0 truncate text-[10px] ${
         status === 'error' ? 'text-[#f87171]' : 'text-[#7dd3fc]'
       }`}
       title={error ?? undefined}

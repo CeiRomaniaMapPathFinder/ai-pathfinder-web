@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { IoIosArrowRoundBack } from 'react-icons/io';
 import { CgPerformance } from 'react-icons/cg';
+import { TbHierarchy } from 'react-icons/tb';
 import {
   AStarSearchPlayer,
   BfsSearchPlayer,
@@ -70,6 +71,15 @@ export default async function PageTwo({ searchParams }: PageTwoProps) {
           {/* ADDED: drives both panels' playback together (see RunBothButton
               for the toggle-to-"Reset Both" behavior once both are done). */}
           <RunBothButton />
+
+          {/* Opens the step-by-step A* search tree for this same route. */}
+          <Link
+            href={start && goal ? `/page3?start=${encodeURIComponent(start)}&goal=${encodeURIComponent(goal)}` : '/page3'}
+            className="flex shrink-0 items-center gap-2 rounded-[14px] border border-cyan-500/30 bg-[#0b1220] px-3 py-2 text-[11px] font-bold text-[#67e8f9] shadow-[0_0_14px_rgba(34,211,238,0.25)] transition hover:shadow-[0_0_20px_rgba(34,211,238,0.45)]"
+          >
+            <TbHierarchy size={16} color="#67e8f9" />
+            A* Tree
+          </Link>
         </header>
 
         {/* 3-column row — align-items: stretch (the flex default) gives all

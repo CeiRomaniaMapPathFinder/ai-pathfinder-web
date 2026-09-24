@@ -83,14 +83,6 @@ const formatEntry = (node: TreeNode) => {
   return `${name}(${g},${h},${f}|${expandedAt})`;
 };
 
-function pathTo(tree: SearchTree, id: string): string[] {
-  const names: string[] = [];
-  for (let node: TreeNode | undefined = tree.nodes[id]; node; node = node.parentId ? tree.nodes[node.parentId] : undefined) {
-    names.unshift(node.entry.name);
-  }
-  return names;
-}
-
 type AStarTreeExplorerProps = { start: string; goal: string };
 
 /**
@@ -242,10 +234,11 @@ export default function AStarTreeExplorer({ start, goal }: AStarTreeExplorerProp
                 backendPath={load.status === 'ready' ? load.backendPath : []}
                 backendDistance={load.status === 'ready' ? load.backendDistance : NaN}
               />
-              <StatTiles view={view} />
-              <PriorityQueueCard tree={tree} view={view} hoveredId={hoveredId} onHover={setHoveredId} onPin={setPinnedId} />
               <NodeInspectorCard tree={tree} view={view} nodeId={inspectedId} pinned={pinnedId !== null && hoveredId === null} onUnpin={() => setPinnedId(null)} />
-              <LegendCard />
+              {/* On the last step the cards above stop growing, so the key
+                  stretches into the leftover height instead of leaving a
+                  gap under the finished result. */}
+              <LegendCard fill={view.goalReached} />
             </>
           ) : load.status === 'loading' ? (
             <SidebarPlaceholder />
@@ -824,85 +817,6 @@ function FormulaRow({ f, g, h }: { f: number; g: number; h: number }) {
   );
 }
 
-function StatTiles({ view }: { view: StepView }) {
-  const tiles = [
-    { label: 'Expanded', value: view.expandedCount, color: '#93c5fd' },
-    { label: 'Generated', value: view.generatedCount, color: '#e2f8ff' },
-    { label: 'In queue', value: view.frontier.length, color: '#fbbf24' },
-  ];
-
-  return (
-    <div className="grid grid-cols-3 gap-3">
-      {tiles.map((tile) => (
-        <div key={tile.label} className={`${CARD} flex flex-col items-center px-2 py-3`}>
-          <span className="text-[18px] font-bold" style={{ ...MONO, color: tile.color }}>
-            {tile.value}
-          </span>
-          <span className="mt-1 text-[8px] text-[#5b7a94]">{tile.label}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-type PriorityQueueCardProps = {
-  tree: SearchTree;
-  view: StepView;
-  hoveredId: string | null;
-  onHover: (id: string | null) => void;
-  onPin: (id: string | null) => void;
-};
-
-function PriorityQueueCard({ tree, view, hoveredId, onHover, onPin }: PriorityQueueCardProps) {
-  return (
-    <div className={`${CARD} p-5`}>
-      <CardTitle aside="lowest f first">{view.isLastStep ? 'Left in Queue' : 'Priority Queue'}</CardTitle>
-
-      {view.frontier.length === 0 ? (
-        <p className="text-[9px] text-[#5b7a94]">Queue is empty.</p>
-      ) : (
-        <table className="w-full border-collapse text-[9px]">
-          <thead>
-            <tr className="text-[#5b7a94]">
-              <th className="pb-2 text-left font-normal">City</th>
-              <th className="pb-2 text-right font-normal">g</th>
-              <th className="pb-2 text-right font-normal">h</th>
-              <th className="pb-2 text-right font-normal">f</th>
-            </tr>
-          </thead>
-          <tbody>
-            {view.frontier.map((id, index) => {
-              const { name, g, h, f } = tree.nodes[id].entry;
-              const isNext = index === 0 && !view.isLastStep;
-              return (
-                <tr
-                  key={id}
-                  onMouseEnter={() => onHover(id)}
-                  onMouseLeave={() => onHover(null)}
-                  onClick={() => onPin(id)}
-                  className={`cursor-pointer border-t border-cyan-500/10 transition ${
-                    hoveredId === id ? 'bg-cyan-500/10' : ''
-                  } ${isNext ? 'text-[#ecfeff]' : view.isLastStep ? 'text-[#64748b]' : 'text-[#fde68a]'}`}
-                >
-                  <td className="py-2">
-                    <span className="flex items-center gap-2">
-                      {name}
-                      {isNext && <span className="rounded bg-cyan-500/20 px-1 py-0.5 text-[7px] text-[#67e8f9]">NEXT</span>}
-                    </span>
-                  </td>
-                  <td className="py-2 text-right" style={MONO}>{g}</td>
-                  <td className="py-2 text-right" style={MONO}>{h}</td>
-                  <td className="py-2 text-right font-bold" style={MONO}>{f}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      )}
-    </div>
-  );
-}
-
 type NodeInspectorCardProps = {
   tree: SearchTree;
   view: StepView;
@@ -963,62 +877,45 @@ function NodeInspectorCard({ tree, view, nodeId, pinned, onUnpin }: NodeInspecto
           </div>
         ))}
       </dl>
-
-      <p className="mt-4 border-t border-cyan-500/15 pt-3 text-[9px] leading-[1.9] text-[#7dd3fc]">
-        {pathTo(tree, node.id).join(' → ')}
-      </p>
-      <p className="mt-2 text-[10px] text-[#5b7a94]" style={MONO}>
-        {formatEntry(node)}
-      </p>
     </div>
   );
 }
 
-function LegendCard() {
+function LegendCard({ fill }: { fill?: boolean }) {
   const items: [Exclude<NodeStatus, 'hidden'>, string][] = [
-    ['current', 'Node being expanded this step'],
-    ['expanded', 'Expanded (popped) earlier'],
-    ['frontier', 'Generated, waiting in the queue'],
-    ['path', 'Final route, once the goal is popped'],
-    ['unexpanded', 'Generated, never expanded'],
+    ['current', 'expanding now'],
+    ['expanded', 'expanded'],
+    ['frontier', 'queued'],
+    ['path', 'final path'],
+    ['unexpanded', 'never expanded'],
   ];
 
   return (
-    <div className={`${CARD} p-5`}>
+    // flex-1 (without min-h-0) grows the card into the leftover height but
+    // never lets it shrink below its own rows, so on a short window the
+    // column scrolls instead of the swatches spilling out of the card.
+    <div className={`${CARD} p-5 ${fill ? 'flex flex-1 flex-col' : ''}`}>
       <CardTitle>Legend</CardTitle>
-      <ul className="flex flex-col gap-2.5">
+      {/* Centred rather than spread: on a tall screen `content-between`
+          pushes the rows metres apart, which reads as a broken card. */}
+      <ul className={`grid grid-cols-2 gap-x-3 ${fill ? 'flex-1 content-center gap-y-4' : 'gap-y-2'}`}>
         {items.map(([status, text]) => {
           const tone = TONES[status];
           return (
-            <li key={status} className="flex items-center gap-3 text-[9px] text-[#7dd3fc]">
+            <li key={status} className="flex items-center gap-2 text-[9px] whitespace-nowrap text-[#7dd3fc]">
               <span
-                className="h-3.5 w-7 shrink-0 rounded-[4px] border-[1.5px]"
+                className="h-3.5 w-6 shrink-0 rounded-[4px] border-[1.5px]"
                 style={{ borderColor: tone.stroke, background: tone.fill, boxShadow: tone.glow ? `0 0 6px ${tone.glow}` : undefined }}
               />
               {text}
             </li>
           );
         })}
-        <li className="flex items-center gap-3 text-[9px] text-[#7dd3fc]">
-          <span className="h-3.5 w-7 shrink-0 animate-pulse rounded-[4px] border-[1.5px] border-dashed border-[#22d3ee]" />
-          Next to be popped (lowest f)
-        </li>
-        <li className="flex items-center gap-3 text-[9px] text-[#7dd3fc]">
-          <span className="flex w-7 shrink-0 justify-center">
-            <span
-              className="flex h-5 w-5 items-center justify-center rounded-full border-[1.5px] border-[#3b82f6] bg-[#060a13] text-[10px] font-bold text-[#93c5fd]"
-              style={MONO}
-            >
-              2
-            </span>
-          </span>
-          Badge = step it was expanded at
+        <li className="flex items-center gap-2 text-[9px] whitespace-nowrap text-[#7dd3fc]">
+          <span className="h-3.5 w-6 shrink-0 rounded-[4px] border-[1.5px] border-dashed border-[#22d3ee]" />
+          next to pop
         </li>
       </ul>
-      <p className="mt-4 border-t border-cyan-500/15 pt-3 text-[9px] leading-[1.8] text-[#5b7a94]">
-        Caption under each box is <span className="text-[#67e8f9]">f</span> = <span className="text-[#93c5fd]">g</span> +{' '}
-        <span className="text-[#fbbf24]">h</span>; numbers on edges are road distances.
-      </p>
     </div>
   );
 }
@@ -1026,7 +923,7 @@ function LegendCard() {
 function SidebarPlaceholder() {
   return (
     <>
-      {[180, 72, 220, 200].map((height, index) => (
+      {[200, 210, 130].map((height, index) => (
         <div key={index} className={`${CARD} animate-pulse`} style={{ height }} />
       ))}
     </>

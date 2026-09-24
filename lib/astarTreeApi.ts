@@ -85,7 +85,7 @@ function toTreeEntry(raw: unknown): TreeEntry {
   };
 }
 
-function normalizeRoutes(routes: RawRoutes): RouteStep[] {
+export function normalizeRoutes(routes: RawRoutes): RouteStep[] {
   const lists = Array.isArray(routes)
     ? routes
     : Object.keys(routes)

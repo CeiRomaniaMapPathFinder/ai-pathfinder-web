@@ -4,9 +4,9 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { IoIosArrowRoundBack } from 'react-icons/io';
 import {
-  TbBinaryTree2,
   TbChevronDown,
   TbChevronUp,
+  TbHierarchy,
   TbListDetails,
   TbMaximize,
   TbPlayerPauseFilled,
@@ -257,7 +257,7 @@ export default function AStarTreeExplorer({ start, goal }: AStarTreeExplorerProp
             <div className="flex shrink-0 items-start justify-between gap-3">
               <div className="min-w-0">
                 <h2 className="flex items-center gap-2 text-[14px] font-bold leading-tight text-[#a5f3fc]" style={GLOW_TEXT}>
-                  <TbBinaryTree2 size={16} />
+                  <TbHierarchy size={16} />
                   Search Tree
                 </h2>
                 <p className="mt-1 truncate text-[10px] text-[#7dd3fc]">
@@ -609,7 +609,7 @@ function CanvasMessage({ load }: { load: LoadState }) {
         </>
       ) : (
         <>
-          <TbBinaryTree2 size={28} className="animate-pulse text-[#22d3ee]" />
+          <TbHierarchy size={28} className="animate-pulse text-[#22d3ee]" />
           <p className="text-[10px] text-[#7dd3fc]">Loading search tree…</p>
         </>
       )}

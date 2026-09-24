@@ -37,7 +37,7 @@ import {
 type LoadState =
   | { status: 'loading' }
   | { status: 'error'; error: string }
-  | { status: 'ready'; tree: SearchTree };
+  | { status: 'ready'; tree: SearchTree; backendPath: string[]; backendDistance: number };
 
 const SPEEDS = [0.5, 1, 1.5, 2, 4];
 const BASE_STEP_MS = 1200;
@@ -111,7 +111,12 @@ export default function AStarTreeExplorer({ start, goal }: AStarTreeExplorerProp
     fetchAStarTree(start, goal, controller.signal)
       .then((response) => {
         if (controller.signal.aborted) return;
-        setLoad({ status: 'ready', tree: buildSearchTree(response.routes, response.goal) });
+        setLoad({
+          status: 'ready',
+          tree: buildSearchTree(response.routes, response.goal),
+          backendPath: response.path,
+          backendDistance: response.distance,
+        });
       })
       .catch((cause: unknown) => {
         if (controller.signal.aborted) return;
@@ -230,7 +235,13 @@ export default function AStarTreeExplorer({ start, goal }: AStarTreeExplorerProp
         <aside className="cyan-scrollbar flex min-h-0 w-[380px] shrink-0 flex-col gap-3 overflow-y-auto pr-1">
           {tree && view ? (
             <>
-              <StepCard tree={tree} view={view} goal={goal} />
+              <StepCard
+                tree={tree}
+                view={view}
+                goal={goal}
+                backendPath={load.status === 'ready' ? load.backendPath : []}
+                backendDistance={load.status === 'ready' ? load.backendDistance : NaN}
+              />
               <StatTiles view={view} />
               <PriorityQueueCard tree={tree} view={view} hoveredId={hoveredId} onHover={setHoveredId} onPin={setPinnedId} />
               <NodeInspectorCard tree={tree} view={view} nodeId={inspectedId} pinned={pinnedId !== null && hoveredId === null} onUnpin={() => setPinnedId(null)} />
@@ -690,13 +701,25 @@ function CardTitle({ children, aside }: { children: ReactNode; aside?: ReactNode
   );
 }
 
-function StepCard({ tree, view, goal }: { tree: SearchTree; view: StepView; goal: string }) {
+type StepCardProps = {
+  tree: SearchTree;
+  view: StepView;
+  goal: string;
+  backendPath: string[];
+  backendDistance: number;
+};
+
+function StepCard({ tree, view, goal, backendPath, backendDistance }: StepCardProps) {
   const current = tree.nodes[view.currentId];
   const { name, g, h, f } = current.entry;
   const generated = current.childIds.map((id) => tree.nodes[id]);
 
   if (view.goalReached) {
     const route = finalPathNames(tree);
+    const pathsDisagree = backendPath.length > 0 && backendPath.join('|') !== route.join('|');
+    const distancesDisagree = Number.isFinite(backendDistance) && backendDistance !== g;
+    const disagrees = pathsDisagree || distancesDisagree;
+
     return (
       <div className={`${CARD} border-green-400/30 p-5 shadow-[0_0_25px_rgba(74,222,128,0.15)]`}>
         <p className="text-[9px] tracking-widest text-[#86efac]">STEP {view.step} · GOAL POPPED</p>
@@ -721,6 +744,22 @@ function StepCard({ tree, view, goal }: { tree: SearchTree; view: StepView; goal
             </div>
           ))}
         </div>
+
+        {backendPath.length > 0 && (
+          <div
+            className={`mt-3 rounded-[8px] border px-3 py-2.5 text-[9px] leading-[1.7] ${
+              disagrees ? 'border-red-400/40 bg-red-500/10 text-[#fca5a5]' : 'border-cyan-500/15 bg-[#0b1220] text-[#7dd3fc]'
+            }`}
+          >
+            <p className={disagrees ? 'font-bold text-[#fca5a5]' : 'text-[#5b7a94]'}>
+              {disagrees ? '⚠ Tree and backend disagree' : 'Backend result'}
+            </p>
+            <p className="mt-1" style={MONO}>
+              {backendPath.join(' → ')} — {backendDistance}
+            </p>
+          </div>
+        )}
+
         <p className="mt-3 text-[9px] leading-[1.7] text-[#5b7a94]">
           {goal} had the lowest f in the queue ({f}), so A* stops — with an admissible h, nothing left in the queue can
           beat it.

@@ -16,14 +16,16 @@ import {
   type SearchTraceStep,
 } from '../lib/searchApi';
 import { buildDeviceIcon } from '../lib/pixelNetworkTheme';
+import { getRunBothState } from '../lib/playbackStatus';
+import { GLASS_CARD } from '../lib/uiTheme';
 
 // Stable identity matters: `trace` is a dependency of an effect inside
 // SearchPlayer that resets playback, so handing it a fresh `[]` on every
 // render would reset the animation every frame and it'd never advance.
 const EMPTY_TRACE: SearchTraceStep[] = [];
 
-// Both keep the "<number> <unit>" shape, because LivePerformanceRows and
-// buildVerdict below read these back out with Number.parseFloat().
+// Both keep the "<number> <unit>" shape, because LivePerformanceRows below
+// reads these back out with Number.parseFloat().
 const formatMs = (value: number | undefined) => `${(value ?? 0).toFixed(2)} ms`;
 const formatKb = (value: number | undefined) => `${Math.round(value ?? 0)} KB`;
 
@@ -36,11 +38,7 @@ const legendCurrentIcon = buildDeviceIcon('router', 'current');
 const legendFrontierIcon = buildDeviceIcon('router', 'frontier');
 const legendVisitedIcon = buildDeviceIcon('router', 'explored');
 
-// Shared card chrome for the sections stacked below the stats table — same
-// border-radius/border/fill/glow language as the existing stats card, just a
-// smaller padding since these hold denser, more compact content.
-const SIDE_CARD_CLASS =
-  'rounded-[15px] border border-cyan-500/20 bg-[rgba(10,18,32,0.55)] p-5 shadow-[0_0_25px_rgba(34,211,238,0.1)] backdrop-blur-md';
+const SIDE_CARD_CLASS = `${GLASS_CARD} p-5`;
 const SIDE_CARD_TITLE_GLOW = { textShadow: '0 0 8px rgba(34,211,238,0.7)' } as const;
 
 type Algorithm = 'bfs' | 'astar';
@@ -71,10 +69,17 @@ type SearchAnimationContextValue = {
   handleBfsStep: (step: SearchTraceStep | undefined, index: number) => void;
   handleAStarStep: (step: SearchTraceStep | undefined, index: number) => void;
   comparisonData: ComparisonItem[];
-  // True only once both panels' live step has actually reached the final,
-  // `done: true` step of their trace — i.e. the user has played/scrubbed
-  // each one to the end, not merely that a start/goal is selected.
+  // True once every trace with more than one step has been played/scrubbed
+  // to its final, `done: true` step — a trace that's a single step long
+  // (e.g. a direct neighbour route) is already at its only state and
+  // doesn't count against this, so a 1-hop route doesn't fire "complete"
+  // before the user has done anything. False when NEITHER trace has more
+  // than one step, since there's nothing to run or reset either way.
   bothComplete: boolean;
+  // Whether either panel actually has more than one step to animate — the
+  // Run Both button is disabled when this is false (both routes resolved in
+  // a single step, so there's nothing to play).
+  canRunBoth: boolean;
   // Incrementing counters, not booleans — each SearchPlayer watches these
   // via a "did this change since I last saw it" ref, so a second Run/Reset
   // press (e.g. mid-playback) fires again even though the previous command
@@ -122,6 +127,7 @@ export function SearchAnimationProvider({ start, goal, children }: ProviderProps
     }
 
     const controller = new AbortController();
+    setResult(null);
     setStatus('loading');
     setError(null);
 
@@ -170,10 +176,7 @@ export function SearchAnimationProvider({ start, goal, children }: ProviderProps
   const bfsFinal = bfsTrace.at(-1);
   const astarFinal = astarTrace.at(-1);
 
-  // The step objects themselves carry `done: true` only on the trace's
-  // final entry, so this is true exactly when the user has played/scrubbed
-  // both panels all the way through — not just that start/goal are set.
-  const bothComplete = Boolean(bfsLive.step?.done && astarLive.step?.done);
+  const { canRunBoth, bothComplete } = getRunBothState(bfsTrace, astarTrace, bfsLive.step, astarLive.step);
 
   const comparisonData: ComparisonItem[] = [
     {
@@ -222,6 +225,7 @@ export function SearchAnimationProvider({ start, goal, children }: ProviderProps
         handleAStarStep,
         comparisonData,
         bothComplete,
+        canRunBoth,
         runToken,
         resetToken,
         runBoth,
@@ -254,78 +258,6 @@ export function LiveComparisonRows() {
   );
 }
 
-type Verdict = { headline: string; detail: string };
-
-// Pure + derived entirely from the same comparisonData the stats table
-// already renders (its bfsFinal/astarFinal fields specifically — the
-// completed trace's numbers). Only called once `ready` (bothComplete from
-// context) is true, i.e. both panels have actually been played/scrubbed to
-// their final step — not merely that a start/goal is selected.
-function buildVerdict(comparisonData: ComparisonItem[], ready: boolean): Verdict | null {
-  if (!ready) return null;
-
-  const cost = comparisonData.find((item) => item.label === 'Path Cost');
-  const time = comparisonData.find((item) => item.label === 'Execution Time');
-  const memory = comparisonData.find((item) => item.label === 'Memory Usage');
-  if (!cost || !time || !memory) return null;
-
-  const bfsTime = Number.parseFloat(time.bfsFinal);
-  const astarTime = Number.parseFloat(time.astarFinal);
-  const bfsCost = Number.parseFloat(cost.bfsFinal);
-  const astarCost = Number.parseFloat(cost.astarFinal);
-  const bfsMem = Number.parseFloat(memory.bfsFinal);
-  const astarMem = Number.parseFloat(memory.astarFinal);
-
-  if ([bfsTime, astarTime, bfsCost, astarCost, bfsMem, astarMem].some((value) => Number.isNaN(value))) {
-    return null;
-  }
-
-  const fasterLabel = bfsTime === astarTime ? null : bfsTime < astarTime ? 'BFS' : 'A*';
-  const speedMultiplier = Math.min(bfsTime, astarTime) > 0 ? Math.max(bfsTime, astarTime) / Math.min(bfsTime, astarTime) : 1;
-
-  const cheaperLabel = bfsCost === astarCost ? null : bfsCost < astarCost ? 'BFS' : 'A*';
-  const costDiff = Math.abs(bfsCost - astarCost);
-
-  const heavierLabel = bfsMem === astarMem ? null : bfsMem > astarMem ? 'BFS' : 'A*';
-  const memMultiplier = Math.min(bfsMem, astarMem) > 0 ? Math.max(bfsMem, astarMem) / Math.min(bfsMem, astarMem) : 1;
-
-  const detail = [
-    fasterLabel ? `${speedMultiplier.toFixed(1)}x faster` : 'same speed',
-    cheaperLabel ? `${cheaperLabel} path is ${costDiff} cheaper` : 'same path cost',
-    heavierLabel ? `~${memMultiplier.toFixed(1)}x more memory (${heavierLabel})` : 'same memory',
-  ].join(', ');
-
-  return { headline: fasterLabel ? `${fasterLabel} wins` : 'Dead heat', detail };
-}
-
-// 1. VERDICT CALLOUT — a compact highlighted box (brighter fill/border than
-// the other cards on purpose, so it reads as a callout rather than another
-// plain stats block) summarizing the comparison in one line.
-export function VerdictCard() {
-  const { comparisonData, bothComplete } = useSearchAnimation();
-  const verdict = buildVerdict(comparisonData, bothComplete);
-
-  return (
-    <div className="flex items-start gap-3 rounded-[15px] border border-cyan-400/40 bg-[rgba(34,211,238,0.1)] p-5 shadow-[0_0_25px_rgba(34,211,238,0.2)] backdrop-blur-md">
-      <span aria-hidden className="text-[16px] leading-none">⚡</span>
-      <div className="min-w-0">
-        {verdict ? (
-          <>
-            <p className="text-[12px] font-bold text-[#a5f3fc]" style={SIDE_CARD_TITLE_GLOW}>
-              {verdict.headline}
-            </p>
-            <p className="mt-1.5 text-[10px] leading-relaxed text-[#7dd3fc]">{verdict.detail}</p>
-          </>
-        ) : (
-          <p className="text-[10px] leading-relaxed text-[#5b7a94]">
-            Run both algorithms to compare results.
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
 type LegendRowProps = { icons: string[]; label: string; description: string };
 
 function LegendRow({ icons, label, description }: LegendRowProps) {
@@ -345,7 +277,7 @@ function LegendRow({ icons, label, description }: LegendRowProps) {
   );
 }
 
-// 2. MAP LEGEND — same icon assets the maps themselves render (see
+// 1. MAP LEGEND — same icon assets the maps themselves render (see
 // legend*Icon consts above), so this key always matches what's on screen.
 export function MapLegendCard() {
   return (
@@ -367,11 +299,9 @@ export function MapLegendCard() {
   );
 }
 
-// 3. HEURISTIC EXPLAINER — native <details>/<summary>, no extra state needed
-// for the collapse. The "h(n) = 0" note in the copy below describes the
-// sample data in lib/mockSearchResponse.json. REVISIT IT once the real
-// backend is wired up: if that implements a genuine straight-line-distance
-// heuristic, this copy becomes wrong and should drop the caveat.
+// 2. HEURISTIC EXPLAINER — native <details>/<summary>, no extra state needed
+// for the collapse. The note describes the backend's xGT-v2b heuristic
+// (pathfinder-api services/XgtHeuristic.java).
 export function HeuristicExplainerCard() {
   return (
     <details className={`${SIDE_CARD_CLASS} group`}>
@@ -386,26 +316,26 @@ export function HeuristicExplainerCard() {
         </p>
         <p>
           <span className="font-semibold text-[#e2f8ff]">A*</span> ranks nodes by f(n) = g(n) + h(n):
-          g(n) is the cost already spent, h(n) is a heuristic estimate of what&apos;s left — normally the
-          straight-line distance to the goal city, so it favors moves that head the right direction.
+          g(n) is the cost already spent, h(n) is a heuristic estimate of what&apos;s left — ours is a football
+          model: each city is scored by how likely a possession starting there is to reach the goal city, so A*
+          favors cities with good onward routes.
         </p>
         <p className="text-[#5b7a94]">
-          Note: this demo&apos;s heuristic is currently h(n) = 0, so &quot;Custom Heuristic Search&quot; behaves like
-          uniform-cost search rather than true straight-line-distance A*.
+          Note: longer roads are harder passes, and cities near the goal make better targets.
         </p>
       </div>
     </details>
   );
 }
 
-// 5. RUN BOTH / RESET BOTH — sits in the header, right-aligned. Toggles
+// 3. RUN BOTH / RESET BOTH — sits in the header, right-aligned. Toggles
 // between the two actions based on bothComplete so there's one button, not
 // two competing ones. Both SearchPlayer instances watch runToken/resetToken
 // (see SearchPlayer's own runToken/resetToken effects) and react
 // independently — this component just fires the shared signal.
 export function RunBothButton() {
-  const { runBoth, resetBoth, bothComplete, status } = useSearchAnimation();
-  const ready = status === 'ready';
+  const { runBoth, resetBoth, bothComplete, canRunBoth, status } = useSearchAnimation();
+  const ready = status === 'ready' && canRunBoth;
 
   return (
     <button

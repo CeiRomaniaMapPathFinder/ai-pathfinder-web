@@ -12,9 +12,9 @@ import {
   RunBothButton,
   SearchAnimationProvider,
   SearchStatusNote,
-  VerdictCard,
 } from '../../components/SearchAnimationState';
 import { pixelFont } from '../../lib/pixelNetworkTheme';
+import { GLASS_CARD } from '../../lib/uiTheme';
 
 type PageTwoProps = {
   searchParams?: Promise<{
@@ -88,12 +88,12 @@ export default async function PageTwo({ searchParams }: PageTwoProps) {
         <div className="flex min-h-0 flex-1 gap-4 px-5 pb-5">
           {/* LEFT: starts immediately with the stats card — no header
               content inside this column anymore. */}
-          <div className="cyan-scrollbar flex min-h-0 w-[420px] shrink-0 flex-col gap-3 overflow-y-auto pr-1">
+          <div className="cyan-scrollbar flex min-h-0 w-[380px] shrink-0 flex-col gap-3 overflow-y-auto pr-1">
             {/* UNCHANGED content: the existing stats table card — padding and
                 row spacing tightened (p-10→p-6, mt-8→mt-5, row py-6→py-3)
                 since the wide gaps between rows and the card's bottom edge
                 were the main reason the sidebar needed to scroll at all. */}
-            <div className="flex h-fit w-full justify-center rounded-[15px] border border-cyan-500/20 bg-[rgba(10,18,32,0.55)] p-6 shadow-[0_0_25px_rgba(34,211,238,0.1)] backdrop-blur-md">
+            <div className={`flex h-fit w-full justify-center ${GLASS_CARD} p-6`}>
               <div className="w-full">
                 <div className="flex flex-col items-center text-center">
                   <p
@@ -123,10 +123,6 @@ export default async function PageTwo({ searchParams }: PageTwoProps) {
               </div>
             </div>
 
-            {/* ADDED: one-line auto-generated verdict, computed from the
-                same comparisonData the stats table above already uses. */}
-            <VerdictCard />
-
             {/* ADDED: key for the icons drawn on the map, reusing the exact
                 same icon assets the map itself renders. */}
             <MapLegendCard />
@@ -151,7 +147,7 @@ export default async function PageTwo({ searchParams }: PageTwoProps) {
           </main>
 
           {/* RIGHT SIDE: original PageTwo performance section stays here */}
-          <aside className="flex w-[380px] shrink-0 flex-col rounded-[15px] border border-cyan-500/20 bg-[rgba(10,18,32,0.55)] p-6 shadow-[0_0_25px_rgba(34,211,238,0.1)] backdrop-blur-md">
+          <aside className={`flex w-[380px] shrink-0 flex-col ${GLASS_CARD} p-6`}>
             <div className="mb-8 flex flex-col gap-2">
               <h2
                 className="text-[24px] font-bold leading-tight text-[#a5f3fc]"

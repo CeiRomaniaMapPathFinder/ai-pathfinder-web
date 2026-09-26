@@ -21,6 +21,7 @@ import {
 } from 'react-icons/tb';
 import { fetchAStarTree, SAMPLE_ROUTES, USING_SAMPLE_DATA } from '../lib/astarTreeApi';
 import { pixelFont } from '../lib/pixelNetworkTheme';
+import { GLASS_CARD } from '../lib/uiTheme';
 import {
   buildSearchTree,
   finalPathNames,
@@ -47,8 +48,12 @@ const ZOOM_STEP = 0.2;
 
 const MONO = { fontFamily: 'var(--font-geist-mono), ui-monospace, monospace' };
 const GLOW_TEXT = { textShadow: '0 0 8px rgba(34,211,238,0.7)' };
-const CARD =
-  'rounded-[15px] border border-cyan-500/20 bg-[rgba(10,18,32,0.55)] shadow-[0_0_25px_rgba(34,211,238,0.1)] backdrop-blur-md';
+const CARD = GLASS_CARD;
+// Sidebar cards divide the column by flex-basis, not by their own content, so
+// the column doesn't grow/shrink step to step or on goal-reached; content
+// that doesn't fit scrolls inside the card instead of resizing it.
+const STEP_SLOT = 'cyan-scrollbar min-h-0 flex-[3] basis-0 overflow-y-auto';
+const INSPECTOR_SLOT = 'cyan-scrollbar min-h-0 flex-[2] basis-0 overflow-y-auto';
 
 // Same tone family as the map icons (lib/pixelNetworkTheme.ts): frontier =
 // amber, explored = blue, current = cyan, start/path = green.
@@ -82,14 +87,6 @@ const formatEntry = (node: TreeNode) => {
   const { name, g, h, f, expandedAt } = node.entry;
   return `${name}(${g},${h},${f}|${expandedAt})`;
 };
-
-function pathTo(tree: SearchTree, id: string): string[] {
-  const names: string[] = [];
-  for (let node: TreeNode | undefined = tree.nodes[id]; node; node = node.parentId ? tree.nodes[node.parentId] : undefined) {
-    names.unshift(node.entry.name);
-  }
-  return names;
-}
 
 type AStarTreeExplorerProps = { start: string; goal: string };
 
@@ -242,13 +239,13 @@ export default function AStarTreeExplorer({ start, goal }: AStarTreeExplorerProp
                 backendPath={load.status === 'ready' ? load.backendPath : []}
                 backendDistance={load.status === 'ready' ? load.backendDistance : NaN}
               />
-              <StatTiles view={view} />
-              <PriorityQueueCard tree={tree} view={view} hoveredId={hoveredId} onHover={setHoveredId} onPin={setPinnedId} />
               <NodeInspectorCard tree={tree} view={view} nodeId={inspectedId} pinned={pinnedId !== null && hoveredId === null} onUnpin={() => setPinnedId(null)} />
               <LegendCard />
             </>
           ) : load.status === 'loading' ? (
             <SidebarPlaceholder />
+          ) : load.status === 'error' ? (
+            <SidebarError message={load.error} />
           ) : null}
         </aside>
 
@@ -268,7 +265,6 @@ export default function AStarTreeExplorer({ start, goal }: AStarTreeExplorerProp
                 <div className="font-semibold text-[#a5f3fc]">
                   Step {tree ? step : 0} / {maxStep}
                 </div>
-                <div>← → Space · click a node</div>
               </div>
             </div>
 
@@ -721,7 +717,7 @@ function StepCard({ tree, view, goal, backendPath, backendDistance }: StepCardPr
     const disagrees = pathsDisagree || distancesDisagree;
 
     return (
-      <div className={`${CARD} border-green-400/30 p-5 shadow-[0_0_25px_rgba(74,222,128,0.15)]`}>
+      <div className={`${CARD} ${STEP_SLOT} border-green-400/30 p-5 shadow-[0_0_25px_rgba(74,222,128,0.15)]`}>
         <p className="text-[9px] tracking-widest text-[#86efac]">STEP {view.step} · GOAL POPPED</p>
         <p className="mt-2 text-[18px] font-bold text-[#dcfce7]" style={{ textShadow: '0 0 10px rgba(74,222,128,0.7)' }}>
           Path Found
@@ -745,15 +741,9 @@ function StepCard({ tree, view, goal, backendPath, backendDistance }: StepCardPr
           ))}
         </div>
 
-        {backendPath.length > 0 && (
-          <div
-            className={`mt-3 rounded-[8px] border px-3 py-2.5 text-[9px] leading-[1.7] ${
-              disagrees ? 'border-red-400/40 bg-red-500/10 text-[#fca5a5]' : 'border-cyan-500/15 bg-[#0b1220] text-[#7dd3fc]'
-            }`}
-          >
-            <p className={disagrees ? 'font-bold text-[#fca5a5]' : 'text-[#5b7a94]'}>
-              {disagrees ? '⚠ Tree and backend disagree' : 'Backend result'}
-            </p>
+        {disagrees && (
+          <div className="mt-3 rounded-[8px] border border-red-400/40 bg-red-500/10 px-3 py-2.5 text-[9px] leading-[1.7] text-[#fca5a5]">
+            <p className="font-bold text-[#fca5a5]">⚠ Tree and backend disagree</p>
             <p className="mt-1" style={MONO}>
               {backendPath.join(' → ')} — {backendDistance}
             </p>
@@ -769,36 +759,40 @@ function StepCard({ tree, view, goal, backendPath, backendDistance }: StepCardPr
   }
 
   return (
-    <div className={`${CARD} p-5`}>
-      <p className="text-[9px] tracking-widest text-[#5b7a94]">
+    <div className={`${CARD} ${STEP_SLOT} flex flex-col p-5`}>
+      <p className="text-[10px] tracking-widest text-[#5b7a94]">
         STEP {view.step} OF {tree.expansions.length - 1}
       </p>
-      <p className="mt-2 text-[10px] text-[#7dd3fc]">{view.step === 0 ? 'Start at' : 'Expanding'}</p>
-      <p className="mt-1.5 text-[18px] font-bold text-[#ecfeff]" style={{ textShadow: '0 0 10px rgba(34,211,238,0.8)' }}>
+      <p className="mt-2 text-[11px] text-[#7dd3fc]">{view.step === 0 ? 'Start at' : 'Expanding'}</p>
+      <p className="mt-1.5 text-[20px] font-bold text-[#ecfeff]" style={{ textShadow: '0 0 10px rgba(34,211,238,0.8)' }}>
         {name}
       </p>
       <FormulaRow f={f} g={g} h={h} />
-      <p className="mt-3 text-[9px] leading-[1.7] text-[#5b7a94]">
+      <p className="mt-3 text-[10px] leading-[1.7] text-[#5b7a94]">
         {view.step === 0
           ? 'The start node goes in first with g = 0, so its f is just the heuristic.'
           : 'Popped because it has the lowest f in the priority queue.'}
       </p>
 
-      {generated.length > 0 && (
-        <div className="mt-4 border-t border-cyan-500/15 pt-3">
-          <p className="mb-2 text-[9px] text-[#7dd3fc]">Generated {generated.length} neighbours</p>
-          <ul className="flex flex-col gap-1.5">
-            {generated.map((child) => (
-              <li key={child.id} className="flex items-center justify-between text-[9px]">
-                <span className="text-[#fde68a]">{child.entry.name}</span>
-                <span className="text-[#fbbf24]" style={MONO}>
-                  f {child.entry.f}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <div className="mt-4 flex min-h-0 flex-1 flex-col justify-center border-t border-cyan-500/15 pt-3">
+        {generated.length > 0 ? (
+          <>
+            <p className="mb-2 text-[10px] text-[#7dd3fc]">Generated {generated.length} neighbours</p>
+            <ul className="flex flex-col gap-2">
+              {generated.map((child) => (
+                <li key={child.id} className="flex items-center justify-between text-[10px]">
+                  <span className="text-[#fde68a]">{child.entry.name}</span>
+                  <span className="text-[#fbbf24]" style={MONO}>
+                    f {child.entry.f}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <p className="text-[10px] text-[#5b7a94]">No new neighbours — every road from here was already queued.</p>
+        )}
+      </div>
     </div>
   );
 }
@@ -820,85 +814,6 @@ function FormulaRow({ f, g, h }: { f: number; g: number; h: number }) {
       {cell('g', g, '#93c5fd')}
       <span style={MONO}>+</span>
       {cell('h', h, '#fbbf24')}
-    </div>
-  );
-}
-
-function StatTiles({ view }: { view: StepView }) {
-  const tiles = [
-    { label: 'Expanded', value: view.expandedCount, color: '#93c5fd' },
-    { label: 'Generated', value: view.generatedCount, color: '#e2f8ff' },
-    { label: 'In queue', value: view.frontier.length, color: '#fbbf24' },
-  ];
-
-  return (
-    <div className="grid grid-cols-3 gap-3">
-      {tiles.map((tile) => (
-        <div key={tile.label} className={`${CARD} flex flex-col items-center px-2 py-3`}>
-          <span className="text-[18px] font-bold" style={{ ...MONO, color: tile.color }}>
-            {tile.value}
-          </span>
-          <span className="mt-1 text-[8px] text-[#5b7a94]">{tile.label}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-type PriorityQueueCardProps = {
-  tree: SearchTree;
-  view: StepView;
-  hoveredId: string | null;
-  onHover: (id: string | null) => void;
-  onPin: (id: string | null) => void;
-};
-
-function PriorityQueueCard({ tree, view, hoveredId, onHover, onPin }: PriorityQueueCardProps) {
-  return (
-    <div className={`${CARD} p-5`}>
-      <CardTitle aside="lowest f first">{view.isLastStep ? 'Left in Queue' : 'Priority Queue'}</CardTitle>
-
-      {view.frontier.length === 0 ? (
-        <p className="text-[9px] text-[#5b7a94]">Queue is empty.</p>
-      ) : (
-        <table className="w-full border-collapse text-[9px]">
-          <thead>
-            <tr className="text-[#5b7a94]">
-              <th className="pb-2 text-left font-normal">City</th>
-              <th className="pb-2 text-right font-normal">g</th>
-              <th className="pb-2 text-right font-normal">h</th>
-              <th className="pb-2 text-right font-normal">f</th>
-            </tr>
-          </thead>
-          <tbody>
-            {view.frontier.map((id, index) => {
-              const { name, g, h, f } = tree.nodes[id].entry;
-              const isNext = index === 0 && !view.isLastStep;
-              return (
-                <tr
-                  key={id}
-                  onMouseEnter={() => onHover(id)}
-                  onMouseLeave={() => onHover(null)}
-                  onClick={() => onPin(id)}
-                  className={`cursor-pointer border-t border-cyan-500/10 transition ${
-                    hoveredId === id ? 'bg-cyan-500/10' : ''
-                  } ${isNext ? 'text-[#ecfeff]' : view.isLastStep ? 'text-[#64748b]' : 'text-[#fde68a]'}`}
-                >
-                  <td className="py-2">
-                    <span className="flex items-center gap-2">
-                      {name}
-                      {isNext && <span className="rounded bg-cyan-500/20 px-1 py-0.5 text-[7px] text-[#67e8f9]">NEXT</span>}
-                    </span>
-                  </td>
-                  <td className="py-2 text-right" style={MONO}>{g}</td>
-                  <td className="py-2 text-right" style={MONO}>{h}</td>
-                  <td className="py-2 text-right font-bold" style={MONO}>{f}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      )}
     </div>
   );
 }
@@ -926,7 +841,7 @@ function NodeInspectorCard({ tree, view, nodeId, pinned, onUnpin }: NodeInspecto
   if (parent) rows.splice(1, 0, ['Reached from', `${parent.entry.name} (+${node.edgeCost})`]);
 
   return (
-    <div className={`${CARD} p-5`}>
+    <div className={`${CARD} ${INSPECTOR_SLOT} p-5`}>
       <CardTitle
         aside={
           pinned ? (
@@ -963,62 +878,40 @@ function NodeInspectorCard({ tree, view, nodeId, pinned, onUnpin }: NodeInspecto
           </div>
         ))}
       </dl>
-
-      <p className="mt-4 border-t border-cyan-500/15 pt-3 text-[9px] leading-[1.9] text-[#7dd3fc]">
-        {pathTo(tree, node.id).join(' → ')}
-      </p>
-      <p className="mt-2 text-[10px] text-[#5b7a94]" style={MONO}>
-        {formatEntry(node)}
-      </p>
     </div>
   );
 }
 
 function LegendCard() {
   const items: [Exclude<NodeStatus, 'hidden'>, string][] = [
-    ['current', 'Node being expanded this step'],
-    ['expanded', 'Expanded (popped) earlier'],
-    ['frontier', 'Generated, waiting in the queue'],
-    ['path', 'Final route, once the goal is popped'],
-    ['unexpanded', 'Generated, never expanded'],
+    ['current', 'expanding now'],
+    ['expanded', 'expanded'],
+    ['frontier', 'queued'],
+    ['path', 'final path'],
+    ['unexpanded', 'never expanded'],
   ];
 
   return (
-    <div className={`${CARD} p-5`}>
+    <div className={`${CARD} shrink-0 p-5`}>
       <CardTitle>Legend</CardTitle>
-      <ul className="flex flex-col gap-2.5">
+      <ul className="grid grid-cols-2 gap-x-3 gap-y-2">
         {items.map(([status, text]) => {
           const tone = TONES[status];
           return (
-            <li key={status} className="flex items-center gap-3 text-[9px] text-[#7dd3fc]">
+            <li key={status} className="flex items-center gap-2 text-[9px] whitespace-nowrap text-[#7dd3fc]">
               <span
-                className="h-3.5 w-7 shrink-0 rounded-[4px] border-[1.5px]"
+                className="h-3.5 w-6 shrink-0 rounded-[4px] border-[1.5px]"
                 style={{ borderColor: tone.stroke, background: tone.fill, boxShadow: tone.glow ? `0 0 6px ${tone.glow}` : undefined }}
               />
               {text}
             </li>
           );
         })}
-        <li className="flex items-center gap-3 text-[9px] text-[#7dd3fc]">
-          <span className="h-3.5 w-7 shrink-0 animate-pulse rounded-[4px] border-[1.5px] border-dashed border-[#22d3ee]" />
-          Next to be popped (lowest f)
-        </li>
-        <li className="flex items-center gap-3 text-[9px] text-[#7dd3fc]">
-          <span className="flex w-7 shrink-0 justify-center">
-            <span
-              className="flex h-5 w-5 items-center justify-center rounded-full border-[1.5px] border-[#3b82f6] bg-[#060a13] text-[10px] font-bold text-[#93c5fd]"
-              style={MONO}
-            >
-              2
-            </span>
-          </span>
-          Badge = step it was expanded at
+        <li className="flex items-center gap-2 text-[9px] whitespace-nowrap text-[#7dd3fc]">
+          <span className="h-3.5 w-6 shrink-0 rounded-[4px] border-[1.5px] border-dashed border-[#22d3ee]" />
+          next to pop
         </li>
       </ul>
-      <p className="mt-4 border-t border-cyan-500/15 pt-3 text-[9px] leading-[1.8] text-[#5b7a94]">
-        Caption under each box is <span className="text-[#67e8f9]">f</span> = <span className="text-[#93c5fd]">g</span> +{' '}
-        <span className="text-[#fbbf24]">h</span>; numbers on edges are road distances.
-      </p>
     </div>
   );
 }
@@ -1026,10 +919,21 @@ function LegendCard() {
 function SidebarPlaceholder() {
   return (
     <>
-      {[180, 72, 220, 200].map((height, index) => (
-        <div key={index} className={`${CARD} animate-pulse`} style={{ height }} />
-      ))}
+      <div className={`${CARD} ${STEP_SLOT} animate-pulse`} />
+      <div className={`${CARD} ${INSPECTOR_SLOT} animate-pulse`} />
+      <div className={`${CARD} shrink-0 animate-pulse`} style={{ height: 130 }} />
     </>
+  );
+}
+
+// Mirrors CanvasMessage's error state so the sidebar doesn't go blank while
+// the canvas shows the full error card with sample-route links.
+function SidebarError({ message }: { message: string }) {
+  return (
+    <div className={`${CARD} p-5`}>
+      <p className="text-[12px] font-bold text-[#f87171]">Couldn&apos;t build the search tree</p>
+      <p className="mt-2 text-[10px] leading-[1.7] text-[#7dd3fc]">{message}</p>
+    </div>
   );
 }
 

@@ -12,6 +12,8 @@ import {
 } from 'react-icons/tb';
 import RomaniaMap from './RomaniaMap';
 import type { SearchTraceStep } from '../lib/searchApi';
+import { describePlayerStatus } from '../lib/playbackStatus';
+import { GLASS_CARD } from '../lib/uiTheme';
 
 type SearchPlayerProps = {
   title: string;
@@ -232,16 +234,12 @@ export default function SearchPlayer({
 
   useEffect(() => stopAnimationFrame, [stopAnimationFrame]);
 
-  const pathText = step?.path.length
-    ? step.path.join(' → ')
-    : start && goal
-      ? `${start} → ${goal}`
-      : 'Select a start and goal city';
+  const { statusLabel, pathText } = describePlayerStatus(trace, step, start, goal);
 
   return (
     <section
       onMouseDown={onActivate}
-      className={`flex min-h-0 flex-1 flex-col rounded-[15px] border border-cyan-500/20 bg-[rgba(10,18,32,0.55)] px-4 pt-2.5 pb-2 shadow-[0_0_20px_rgba(34,211,238,0.1)] backdrop-blur-md transition ${
+      className={`flex min-h-0 flex-1 flex-col ${GLASS_CARD} px-4 pt-2.5 pb-2 transition ${
         active ? 'ring-2 ring-cyan-400/50 shadow-[0_0_25px_rgba(34,211,238,0.25)]' : ''
       }`}
     >
@@ -254,12 +252,11 @@ export default function SearchPlayer({
             {title}
           </h2>
           <p className="mt-0.5 truncate text-[11px] text-[#7dd3fc]">
-            {step?.done ? 'Path Found' : 'Current Path'}&nbsp;&nbsp; {pathText}
+            {statusLabel} · {pathText}
           </p>
         </div>
         <div className="shrink-0 text-right text-[10px] leading-tight text-[#5b7a94]">
           <div className="font-semibold text-[#a5f3fc]">Step {trace.length ? stepIndex + 1 : 0} / {trace.length}</div>
-          <div>{active ? 'Keyboard active' : 'Click card for keyboard'}</div>
         </div>
       </div>
 

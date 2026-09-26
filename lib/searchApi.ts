@@ -76,8 +76,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL;
 const FIXTURE_LATENCY_MS = 150;
 
 /**
- * `done` gates the verdict card, the Run Both → Reset Both toggle, and when
- * the final path lights up on the map — so rather than trusting the backend
+ * `done` gates the Run Both → Reset Both toggle, and when the final path
+ * lights up on the map — so rather than trusting the backend
  * to flag exactly the last step and nothing else, it gets derived here.
  * One place to fix it, every consumer stays correct.
  */

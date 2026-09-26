@@ -17,6 +17,7 @@ import {
 } from '../lib/searchApi';
 import { buildDeviceIcon } from '../lib/pixelNetworkTheme';
 import { getRunBothState } from '../lib/playbackStatus';
+import { GLASS_CARD } from '../lib/uiTheme';
 
 // Stable identity matters: `trace` is a dependency of an effect inside
 // SearchPlayer that resets playback, so handing it a fresh `[]` on every
@@ -37,11 +38,7 @@ const legendCurrentIcon = buildDeviceIcon('router', 'current');
 const legendFrontierIcon = buildDeviceIcon('router', 'frontier');
 const legendVisitedIcon = buildDeviceIcon('router', 'explored');
 
-// Shared card chrome for the sections stacked below the stats table — same
-// border-radius/border/fill/glow language as the existing stats card, just a
-// smaller padding since these hold denser, more compact content.
-const SIDE_CARD_CLASS =
-  'rounded-[15px] border border-cyan-500/20 bg-[rgba(10,18,32,0.55)] p-5 shadow-[0_0_25px_rgba(34,211,238,0.1)] backdrop-blur-md';
+const SIDE_CARD_CLASS = `${GLASS_CARD} p-5`;
 const SIDE_CARD_TITLE_GLOW = { textShadow: '0 0 8px rgba(34,211,238,0.7)' } as const;
 
 type Algorithm = 'bfs' | 'astar';
@@ -280,7 +277,7 @@ function LegendRow({ icons, label, description }: LegendRowProps) {
   );
 }
 
-// 2. MAP LEGEND — same icon assets the maps themselves render (see
+// 1. MAP LEGEND — same icon assets the maps themselves render (see
 // legend*Icon consts above), so this key always matches what's on screen.
 export function MapLegendCard() {
   return (
@@ -302,7 +299,7 @@ export function MapLegendCard() {
   );
 }
 
-// 3. HEURISTIC EXPLAINER — native <details>/<summary>, no extra state needed
+// 2. HEURISTIC EXPLAINER — native <details>/<summary>, no extra state needed
 // for the collapse. The note describes the backend's xGT-v2b heuristic
 // (pathfinder-api services/XgtHeuristic.java).
 export function HeuristicExplainerCard() {
@@ -331,7 +328,7 @@ export function HeuristicExplainerCard() {
   );
 }
 
-// 5. RUN BOTH / RESET BOTH — sits in the header, right-aligned. Toggles
+// 3. RUN BOTH / RESET BOTH — sits in the header, right-aligned. Toggles
 // between the two actions based on bothComplete so there's one button, not
 // two competing ones. Both SearchPlayer instances watch runToken/resetToken
 // (see SearchPlayer's own runToken/resetToken effects) and react

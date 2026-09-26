@@ -21,6 +21,7 @@ import {
 } from 'react-icons/tb';
 import { fetchAStarTree, SAMPLE_ROUTES, USING_SAMPLE_DATA } from '../lib/astarTreeApi';
 import { pixelFont } from '../lib/pixelNetworkTheme';
+import { GLASS_CARD } from '../lib/uiTheme';
 import {
   buildSearchTree,
   finalPathNames,
@@ -47,8 +48,7 @@ const ZOOM_STEP = 0.2;
 
 const MONO = { fontFamily: 'var(--font-geist-mono), ui-monospace, monospace' };
 const GLOW_TEXT = { textShadow: '0 0 8px rgba(34,211,238,0.7)' };
-const CARD =
-  'rounded-[15px] border border-cyan-500/20 bg-[rgba(10,18,32,0.55)] shadow-[0_0_25px_rgba(34,211,238,0.1)] backdrop-blur-md';
+const CARD = GLASS_CARD;
 // Sidebar cards divide the column by flex-basis, not by their own content, so
 // the column doesn't grow/shrink step to step or on goal-reached; content
 // that doesn't fit scrolls inside the card instead of resizing it.
@@ -921,9 +921,9 @@ function LegendCard() {
 function SidebarPlaceholder() {
   return (
     <>
-      {[200, 210, 130].map((height, index) => (
-        <div key={index} className={`${CARD} animate-pulse`} style={{ height }} />
-      ))}
+      <div className={`${CARD} ${STEP_SLOT} animate-pulse`} />
+      <div className={`${CARD} ${INSPECTOR_SLOT} animate-pulse`} />
+      <div className={`${CARD} shrink-0 animate-pulse`} style={{ height: 130 }} />
     </>
   );
 }

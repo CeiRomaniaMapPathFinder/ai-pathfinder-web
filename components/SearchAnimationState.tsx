@@ -71,10 +71,17 @@ type SearchAnimationContextValue = {
   handleBfsStep: (step: SearchTraceStep | undefined, index: number) => void;
   handleAStarStep: (step: SearchTraceStep | undefined, index: number) => void;
   comparisonData: ComparisonItem[];
-  // True only once both panels' live step has actually reached the final,
-  // `done: true` step of their trace — i.e. the user has played/scrubbed
-  // each one to the end, not merely that a start/goal is selected.
+  // True once every trace with more than one step has been played/scrubbed
+  // to its final, `done: true` step — a trace that's a single step long
+  // (e.g. a direct neighbour route) is already at its only state and
+  // doesn't count against this, so a 1-hop route doesn't fire "complete"
+  // before the user has done anything. False when NEITHER trace has more
+  // than one step, since there's nothing to run or reset either way.
   bothComplete: boolean;
+  // Whether either panel actually has more than one step to animate — the
+  // Run Both button is disabled when this is false (both routes resolved in
+  // a single step, so there's nothing to play).
+  canRunBoth: boolean;
   // Incrementing counters, not booleans — each SearchPlayer watches these
   // via a "did this change since I last saw it" ref, so a second Run/Reset
   // press (e.g. mid-playback) fires again even though the previous command
@@ -122,6 +129,7 @@ export function SearchAnimationProvider({ start, goal, children }: ProviderProps
     }
 
     const controller = new AbortController();
+    setResult(null);
     setStatus('loading');
     setError(null);
 
@@ -170,10 +178,15 @@ export function SearchAnimationProvider({ start, goal, children }: ProviderProps
   const bfsFinal = bfsTrace.at(-1);
   const astarFinal = astarTrace.at(-1);
 
-  // The step objects themselves carry `done: true` only on the trace's
-  // final entry, so this is true exactly when the user has played/scrubbed
-  // both panels all the way through — not just that start/goal are set.
-  const bothComplete = Boolean(bfsLive.step?.done && astarLive.step?.done);
+  // A trace of length <= 1 has no playback to complete — its one step is
+  // `done: true` from the moment it loads, so it's excluded from the
+  // check rather than trivially satisfying it.
+  const bfsHasSteps = bfsTrace.length > 1;
+  const astarHasSteps = astarTrace.length > 1;
+  const canRunBoth = bfsHasSteps || astarHasSteps;
+  const bothComplete =
+    canRunBoth &&
+    Boolean((!bfsHasSteps || bfsLive.step?.done) && (!astarHasSteps || astarLive.step?.done));
 
   const comparisonData: ComparisonItem[] = [
     {
@@ -222,6 +235,7 @@ export function SearchAnimationProvider({ start, goal, children }: ProviderProps
         handleAStarStep,
         comparisonData,
         bothComplete,
+        canRunBoth,
         runToken,
         resetToken,
         runBoth,
@@ -330,8 +344,8 @@ export function HeuristicExplainerCard() {
 // (see SearchPlayer's own runToken/resetToken effects) and react
 // independently — this component just fires the shared signal.
 export function RunBothButton() {
-  const { runBoth, resetBoth, bothComplete, status } = useSearchAnimation();
-  const ready = status === 'ready';
+  const { runBoth, resetBoth, bothComplete, canRunBoth, status } = useSearchAnimation();
+  const ready = status === 'ready' && canRunBoth;
 
   return (
     <button

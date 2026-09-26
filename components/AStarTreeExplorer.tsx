@@ -49,6 +49,11 @@ const MONO = { fontFamily: 'var(--font-geist-mono), ui-monospace, monospace' };
 const GLOW_TEXT = { textShadow: '0 0 8px rgba(34,211,238,0.7)' };
 const CARD =
   'rounded-[15px] border border-cyan-500/20 bg-[rgba(10,18,32,0.55)] shadow-[0_0_25px_rgba(34,211,238,0.1)] backdrop-blur-md';
+// Sidebar cards divide the column by flex-basis, not by their own content, so
+// the column doesn't grow/shrink step to step or on goal-reached; content
+// that doesn't fit scrolls inside the card instead of resizing it.
+const STEP_SLOT = 'cyan-scrollbar min-h-0 flex-[3] basis-0 overflow-y-auto';
+const INSPECTOR_SLOT = 'cyan-scrollbar min-h-0 flex-[2] basis-0 overflow-y-auto';
 
 // Same tone family as the map icons (lib/pixelNetworkTheme.ts): frontier =
 // amber, explored = blue, current = cyan, start/path = green.
@@ -235,13 +240,12 @@ export default function AStarTreeExplorer({ start, goal }: AStarTreeExplorerProp
                 backendDistance={load.status === 'ready' ? load.backendDistance : NaN}
               />
               <NodeInspectorCard tree={tree} view={view} nodeId={inspectedId} pinned={pinnedId !== null && hoveredId === null} onUnpin={() => setPinnedId(null)} />
-              {/* On the last step the cards above stop growing, so the key
-                  stretches into the leftover height instead of leaving a
-                  gap under the finished result. */}
-              <LegendCard fill={view.goalReached} />
+              <LegendCard />
             </>
           ) : load.status === 'loading' ? (
             <SidebarPlaceholder />
+          ) : load.status === 'error' ? (
+            <SidebarError message={load.error} />
           ) : null}
         </aside>
 
@@ -713,7 +717,7 @@ function StepCard({ tree, view, goal, backendPath, backendDistance }: StepCardPr
     const disagrees = pathsDisagree || distancesDisagree;
 
     return (
-      <div className={`${CARD} border-green-400/30 p-5 shadow-[0_0_25px_rgba(74,222,128,0.15)]`}>
+      <div className={`${CARD} ${STEP_SLOT} border-green-400/30 p-5 shadow-[0_0_25px_rgba(74,222,128,0.15)]`}>
         <p className="text-[9px] tracking-widest text-[#86efac]">STEP {view.step} · GOAL POPPED</p>
         <p className="mt-2 text-[18px] font-bold text-[#dcfce7]" style={{ textShadow: '0 0 10px rgba(74,222,128,0.7)' }}>
           Path Found
@@ -761,7 +765,7 @@ function StepCard({ tree, view, goal, backendPath, backendDistance }: StepCardPr
   }
 
   return (
-    <div className={`${CARD} p-5`}>
+    <div className={`${CARD} ${STEP_SLOT} p-5`}>
       <p className="text-[9px] tracking-widest text-[#5b7a94]">
         STEP {view.step} OF {tree.expansions.length - 1}
       </p>
@@ -839,7 +843,7 @@ function NodeInspectorCard({ tree, view, nodeId, pinned, onUnpin }: NodeInspecto
   if (parent) rows.splice(1, 0, ['Reached from', `${parent.entry.name} (+${node.edgeCost})`]);
 
   return (
-    <div className={`${CARD} p-5`}>
+    <div className={`${CARD} ${INSPECTOR_SLOT} p-5`}>
       <CardTitle
         aside={
           pinned ? (
@@ -880,7 +884,7 @@ function NodeInspectorCard({ tree, view, nodeId, pinned, onUnpin }: NodeInspecto
   );
 }
 
-function LegendCard({ fill }: { fill?: boolean }) {
+function LegendCard() {
   const items: [Exclude<NodeStatus, 'hidden'>, string][] = [
     ['current', 'expanding now'],
     ['expanded', 'expanded'],
@@ -890,14 +894,9 @@ function LegendCard({ fill }: { fill?: boolean }) {
   ];
 
   return (
-    // flex-1 (without min-h-0) grows the card into the leftover height but
-    // never lets it shrink below its own rows, so on a short window the
-    // column scrolls instead of the swatches spilling out of the card.
-    <div className={`${CARD} p-5 ${fill ? 'flex flex-1 flex-col' : ''}`}>
+    <div className={`${CARD} shrink-0 p-5`}>
       <CardTitle>Legend</CardTitle>
-      {/* Centred rather than spread: on a tall screen `content-between`
-          pushes the rows metres apart, which reads as a broken card. */}
-      <ul className={`grid grid-cols-2 gap-x-3 ${fill ? 'flex-1 content-center gap-y-4' : 'gap-y-2'}`}>
+      <ul className="grid grid-cols-2 gap-x-3 gap-y-2">
         {items.map(([status, text]) => {
           const tone = TONES[status];
           return (
@@ -926,6 +925,17 @@ function SidebarPlaceholder() {
         <div key={index} className={`${CARD} animate-pulse`} style={{ height }} />
       ))}
     </>
+  );
+}
+
+// Mirrors CanvasMessage's error state so the sidebar doesn't go blank while
+// the canvas shows the full error card with sample-route links.
+function SidebarError({ message }: { message: string }) {
+  return (
+    <div className={`${CARD} p-5`}>
+      <p className="text-[12px] font-bold text-[#f87171]">Couldn&apos;t build the search tree</p>
+      <p className="mt-2 text-[10px] leading-[1.7] text-[#7dd3fc]">{message}</p>
+    </div>
   );
 }
 

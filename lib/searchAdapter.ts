@@ -84,8 +84,6 @@ function bfsSteps(res: BfsResponse, start: string, goal: string): SearchTraceSte
     return path;
   };
 
-  // BFS catches the goal on generation, so it never actually expands it — A* does. That's
-  // why A*'s node count runs one higher on the same pair. Not a bug, just how they differ.
   const explored = new Set<string>();
   const enqueued = [start];
   const last = expanded.length - 1;

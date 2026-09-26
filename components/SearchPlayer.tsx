@@ -259,7 +259,6 @@ export default function SearchPlayer({
         </div>
         <div className="shrink-0 text-right text-[10px] leading-tight text-[#5b7a94]">
           <div className="font-semibold text-[#a5f3fc]">Step {trace.length ? stepIndex + 1 : 0} / {trace.length}</div>
-          <div>{active ? 'Keyboard active' : 'Click card for keyboard'}</div>
         </div>
       </div>
 

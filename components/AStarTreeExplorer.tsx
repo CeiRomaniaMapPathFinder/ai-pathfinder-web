@@ -261,7 +261,6 @@ export default function AStarTreeExplorer({ start, goal }: AStarTreeExplorerProp
                 <div className="font-semibold text-[#a5f3fc]">
                   Step {tree ? step : 0} / {maxStep}
                 </div>
-                <div>← → Space · click a node</div>
               </div>
             </div>
 

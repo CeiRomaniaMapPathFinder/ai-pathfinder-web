@@ -22,8 +22,8 @@ import { buildDeviceIcon } from '../lib/pixelNetworkTheme';
 // render would reset the animation every frame and it'd never advance.
 const EMPTY_TRACE: SearchTraceStep[] = [];
 
-// Both keep the "<number> <unit>" shape, because LivePerformanceRows and
-// buildVerdict below read these back out with Number.parseFloat().
+// Both keep the "<number> <unit>" shape, because LivePerformanceRows below
+// reads these back out with Number.parseFloat().
 const formatMs = (value: number | undefined) => `${(value ?? 0).toFixed(2)} ms`;
 const formatKb = (value: number | undefined) => `${Math.round(value ?? 0)} KB`;
 
@@ -251,78 +251,6 @@ export function LiveComparisonRows() {
         </div>
       ))}
     </>
-  );
-}
-
-type Verdict = { headline: string; detail: string };
-
-// Pure + derived entirely from the same comparisonData the stats table
-// already renders (its bfsFinal/astarFinal fields specifically — the
-// completed trace's numbers). Only called once `ready` (bothComplete from
-// context) is true, i.e. both panels have actually been played/scrubbed to
-// their final step — not merely that a start/goal is selected.
-function buildVerdict(comparisonData: ComparisonItem[], ready: boolean): Verdict | null {
-  if (!ready) return null;
-
-  const cost = comparisonData.find((item) => item.label === 'Path Cost');
-  const time = comparisonData.find((item) => item.label === 'Execution Time');
-  const memory = comparisonData.find((item) => item.label === 'Memory Usage');
-  if (!cost || !time || !memory) return null;
-
-  const bfsTime = Number.parseFloat(time.bfsFinal);
-  const astarTime = Number.parseFloat(time.astarFinal);
-  const bfsCost = Number.parseFloat(cost.bfsFinal);
-  const astarCost = Number.parseFloat(cost.astarFinal);
-  const bfsMem = Number.parseFloat(memory.bfsFinal);
-  const astarMem = Number.parseFloat(memory.astarFinal);
-
-  if ([bfsTime, astarTime, bfsCost, astarCost, bfsMem, astarMem].some((value) => Number.isNaN(value))) {
-    return null;
-  }
-
-  const fasterLabel = bfsTime === astarTime ? null : bfsTime < astarTime ? 'BFS' : 'A*';
-  const speedMultiplier = Math.min(bfsTime, astarTime) > 0 ? Math.max(bfsTime, astarTime) / Math.min(bfsTime, astarTime) : 1;
-
-  const cheaperLabel = bfsCost === astarCost ? null : bfsCost < astarCost ? 'BFS' : 'A*';
-  const costDiff = Math.abs(bfsCost - astarCost);
-
-  const heavierLabel = bfsMem === astarMem ? null : bfsMem > astarMem ? 'BFS' : 'A*';
-  const memMultiplier = Math.min(bfsMem, astarMem) > 0 ? Math.max(bfsMem, astarMem) / Math.min(bfsMem, astarMem) : 1;
-
-  const detail = [
-    fasterLabel ? `${speedMultiplier.toFixed(1)}x faster` : 'same speed',
-    cheaperLabel ? `${cheaperLabel} path is ${costDiff} cheaper` : 'same path cost',
-    heavierLabel ? `~${memMultiplier.toFixed(1)}x more memory (${heavierLabel})` : 'same memory',
-  ].join(', ');
-
-  return { headline: fasterLabel ? `${fasterLabel} wins` : 'Dead heat', detail };
-}
-
-// 1. VERDICT CALLOUT — a compact highlighted box (brighter fill/border than
-// the other cards on purpose, so it reads as a callout rather than another
-// plain stats block) summarizing the comparison in one line.
-export function VerdictCard() {
-  const { comparisonData, bothComplete } = useSearchAnimation();
-  const verdict = buildVerdict(comparisonData, bothComplete);
-
-  return (
-    <div className="flex items-start gap-3 rounded-[15px] border border-cyan-400/40 bg-[rgba(34,211,238,0.1)] p-5 shadow-[0_0_25px_rgba(34,211,238,0.2)] backdrop-blur-md">
-      <span aria-hidden className="text-[16px] leading-none">⚡</span>
-      <div className="min-w-0">
-        {verdict ? (
-          <>
-            <p className="text-[12px] font-bold text-[#a5f3fc]" style={SIDE_CARD_TITLE_GLOW}>
-              {verdict.headline}
-            </p>
-            <p className="mt-1.5 text-[10px] leading-relaxed text-[#7dd3fc]">{verdict.detail}</p>
-          </>
-        ) : (
-          <p className="text-[10px] leading-relaxed text-[#5b7a94]">
-            Run both algorithms to compare results.
-          </p>
-        )}
-      </div>
-    </div>
   );
 }
 

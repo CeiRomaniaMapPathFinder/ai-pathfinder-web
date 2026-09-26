@@ -12,7 +12,6 @@ import {
   RunBothButton,
   SearchAnimationProvider,
   SearchStatusNote,
-  VerdictCard,
 } from '../../components/SearchAnimationState';
 import { pixelFont } from '../../lib/pixelNetworkTheme';
 
@@ -122,10 +121,6 @@ export default async function PageTwo({ searchParams }: PageTwoProps) {
                 <LiveComparisonRows />
               </div>
             </div>
-
-            {/* ADDED: one-line auto-generated verdict, computed from the
-                same comparisonData the stats table above already uses. */}
-            <VerdictCard />
 
             {/* ADDED: key for the icons drawn on the map, reusing the exact
                 same icon assets the map itself renders. */}

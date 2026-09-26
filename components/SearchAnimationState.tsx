@@ -16,6 +16,7 @@ import {
   type SearchTraceStep,
 } from '../lib/searchApi';
 import { buildDeviceIcon } from '../lib/pixelNetworkTheme';
+import { getRunBothState } from '../lib/playbackStatus';
 
 // Stable identity matters: `trace` is a dependency of an effect inside
 // SearchPlayer that resets playback, so handing it a fresh `[]` on every
@@ -178,15 +179,7 @@ export function SearchAnimationProvider({ start, goal, children }: ProviderProps
   const bfsFinal = bfsTrace.at(-1);
   const astarFinal = astarTrace.at(-1);
 
-  // A trace of length <= 1 has no playback to complete — its one step is
-  // `done: true` from the moment it loads, so it's excluded from the
-  // check rather than trivially satisfying it.
-  const bfsHasSteps = bfsTrace.length > 1;
-  const astarHasSteps = astarTrace.length > 1;
-  const canRunBoth = bfsHasSteps || astarHasSteps;
-  const bothComplete =
-    canRunBoth &&
-    Boolean((!bfsHasSteps || bfsLive.step?.done) && (!astarHasSteps || astarLive.step?.done));
+  const { canRunBoth, bothComplete } = getRunBothState(bfsTrace, astarTrace, bfsLive.step, astarLive.step);
 
   const comparisonData: ComparisonItem[] = [
     {

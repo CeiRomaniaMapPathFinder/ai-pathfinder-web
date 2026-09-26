@@ -12,6 +12,7 @@ import {
 } from 'react-icons/tb';
 import RomaniaMap from './RomaniaMap';
 import type { SearchTraceStep } from '../lib/searchApi';
+import { describePlayerStatus } from '../lib/playbackStatus';
 
 type SearchPlayerProps = {
   title: string;
@@ -232,14 +233,7 @@ export default function SearchPlayer({
 
   useEffect(() => stopAnimationFrame, [stopAnimationFrame]);
 
-  const hasTrace = trace.length > 0;
-  const cityCount = step?.path.length ?? 0;
-  const statusLabel = !hasTrace ? 'No Path Yet' : step?.done ? 'Path Found' : 'Current Path';
-  const pathText = hasTrace
-    ? `${cityCount} ${cityCount === 1 ? 'city' : 'cities'}${step?.done ? ` · cost ${step.pathCost}` : ' so far'}`
-    : start && goal
-      ? `${start} → ${goal}`
-      : 'Select a start and goal city';
+  const { statusLabel, pathText } = describePlayerStatus(trace, step, start, goal);
 
   return (
     <section

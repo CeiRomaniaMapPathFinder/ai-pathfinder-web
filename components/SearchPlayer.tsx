@@ -232,8 +232,9 @@ export default function SearchPlayer({
 
   useEffect(() => stopAnimationFrame, [stopAnimationFrame]);
 
-  const pathText = step?.path.length
-    ? step.path.join(' → ')
+  const cityCount = step?.path.length ?? 0;
+  const pathText = cityCount
+    ? `${cityCount} ${cityCount === 1 ? 'city' : 'cities'}${step?.done ? ` · cost ${step.pathCost}` : ' so far'}`
     : start && goal
       ? `${start} → ${goal}`
       : 'Select a start and goal city';
@@ -254,7 +255,7 @@ export default function SearchPlayer({
             {title}
           </h2>
           <p className="mt-0.5 truncate text-[11px] text-[#7dd3fc]">
-            {step?.done ? 'Path Found' : 'Current Path'}&nbsp;&nbsp; {pathText}
+            {step?.done ? 'Path Found' : 'Current Path'} · {pathText}
           </p>
         </div>
         <div className="shrink-0 text-right text-[10px] leading-tight text-[#5b7a94]">

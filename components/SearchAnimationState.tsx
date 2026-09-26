@@ -296,10 +296,8 @@ export function MapLegendCard() {
 }
 
 // 3. HEURISTIC EXPLAINER — native <details>/<summary>, no extra state needed
-// for the collapse. The "h(n) = 0" note in the copy below describes the
-// sample data in lib/mockSearchResponse.json. REVISIT IT once the real
-// backend is wired up: if that implements a genuine straight-line-distance
-// heuristic, this copy becomes wrong and should drop the caveat.
+// for the collapse. The note describes the backend's xGT-v2b heuristic
+// (pathfinder-api services/XgtHeuristic.java).
 export function HeuristicExplainerCard() {
   return (
     <details className={`${SIDE_CARD_CLASS} group`}>
@@ -314,12 +312,12 @@ export function HeuristicExplainerCard() {
         </p>
         <p>
           <span className="font-semibold text-[#e2f8ff]">A*</span> ranks nodes by f(n) = g(n) + h(n):
-          g(n) is the cost already spent, h(n) is a heuristic estimate of what&apos;s left — normally the
-          straight-line distance to the goal city, so it favors moves that head the right direction.
+          g(n) is the cost already spent, h(n) is a heuristic estimate of what&apos;s left — ours is a football
+          model: each city is scored by how likely a possession starting there is to reach the goal city, so A*
+          favors cities with good onward routes.
         </p>
         <p className="text-[#5b7a94]">
-          Note: this demo&apos;s heuristic is currently h(n) = 0, so &quot;Custom Heuristic Search&quot; behaves like
-          uniform-cost search rather than true straight-line-distance A*.
+          Note: longer roads are harder passes, and cities near the goal make better targets.
         </p>
       </div>
     </details>

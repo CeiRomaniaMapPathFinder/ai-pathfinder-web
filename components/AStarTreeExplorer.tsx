@@ -741,15 +741,9 @@ function StepCard({ tree, view, goal, backendPath, backendDistance }: StepCardPr
           ))}
         </div>
 
-        {backendPath.length > 0 && (
-          <div
-            className={`mt-3 rounded-[8px] border px-3 py-2.5 text-[9px] leading-[1.7] ${
-              disagrees ? 'border-red-400/40 bg-red-500/10 text-[#fca5a5]' : 'border-cyan-500/15 bg-[#0b1220] text-[#7dd3fc]'
-            }`}
-          >
-            <p className={disagrees ? 'font-bold text-[#fca5a5]' : 'text-[#5b7a94]'}>
-              {disagrees ? '⚠ Tree and backend disagree' : 'Backend result'}
-            </p>
+        {disagrees && (
+          <div className="mt-3 rounded-[8px] border border-red-400/40 bg-red-500/10 px-3 py-2.5 text-[9px] leading-[1.7] text-[#fca5a5]">
+            <p className="font-bold text-[#fca5a5]">⚠ Tree and backend disagree</p>
             <p className="mt-1" style={MONO}>
               {backendPath.join(' → ')} — {backendDistance}
             </p>
@@ -765,36 +759,40 @@ function StepCard({ tree, view, goal, backendPath, backendDistance }: StepCardPr
   }
 
   return (
-    <div className={`${CARD} ${STEP_SLOT} p-5`}>
-      <p className="text-[9px] tracking-widest text-[#5b7a94]">
+    <div className={`${CARD} ${STEP_SLOT} flex flex-col p-5`}>
+      <p className="text-[10px] tracking-widest text-[#5b7a94]">
         STEP {view.step} OF {tree.expansions.length - 1}
       </p>
-      <p className="mt-2 text-[10px] text-[#7dd3fc]">{view.step === 0 ? 'Start at' : 'Expanding'}</p>
-      <p className="mt-1.5 text-[18px] font-bold text-[#ecfeff]" style={{ textShadow: '0 0 10px rgba(34,211,238,0.8)' }}>
+      <p className="mt-2 text-[11px] text-[#7dd3fc]">{view.step === 0 ? 'Start at' : 'Expanding'}</p>
+      <p className="mt-1.5 text-[20px] font-bold text-[#ecfeff]" style={{ textShadow: '0 0 10px rgba(34,211,238,0.8)' }}>
         {name}
       </p>
       <FormulaRow f={f} g={g} h={h} />
-      <p className="mt-3 text-[9px] leading-[1.7] text-[#5b7a94]">
+      <p className="mt-3 text-[10px] leading-[1.7] text-[#5b7a94]">
         {view.step === 0
           ? 'The start node goes in first with g = 0, so its f is just the heuristic.'
           : 'Popped because it has the lowest f in the priority queue.'}
       </p>
 
-      {generated.length > 0 && (
-        <div className="mt-4 border-t border-cyan-500/15 pt-3">
-          <p className="mb-2 text-[9px] text-[#7dd3fc]">Generated {generated.length} neighbours</p>
-          <ul className="flex flex-col gap-1.5">
-            {generated.map((child) => (
-              <li key={child.id} className="flex items-center justify-between text-[9px]">
-                <span className="text-[#fde68a]">{child.entry.name}</span>
-                <span className="text-[#fbbf24]" style={MONO}>
-                  f {child.entry.f}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <div className="mt-4 flex min-h-0 flex-1 flex-col justify-center border-t border-cyan-500/15 pt-3">
+        {generated.length > 0 ? (
+          <>
+            <p className="mb-2 text-[10px] text-[#7dd3fc]">Generated {generated.length} neighbours</p>
+            <ul className="flex flex-col gap-2">
+              {generated.map((child) => (
+                <li key={child.id} className="flex items-center justify-between text-[10px]">
+                  <span className="text-[#fde68a]">{child.entry.name}</span>
+                  <span className="text-[#fbbf24]" style={MONO}>
+                    f {child.entry.f}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <p className="text-[10px] text-[#5b7a94]">No new neighbours — every road from here was already queued.</p>
+        )}
+      </div>
     </div>
   );
 }

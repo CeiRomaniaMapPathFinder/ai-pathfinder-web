@@ -81,10 +81,27 @@ describe('A* Arad -> Bucharest', () => {
 describe('A* Zerind -> Bucharest', () => {
   const { steps } = mapAStarResponse(astarZerindBucharest as AStarResponse, 'Zerind');
 
-  it('expands in order Zerind, Arad, Sibiu, Rimnicu Vilcea, Pitesti, Bucharest', () => {
+  it('expands in order Zerind, Arad, Sibiu, Rimnicu Vilcea, Pitesti', () => {
     expect(steps.map((s) => s.currentNode)).toEqual([
-      'Zerind', 'Arad', 'Sibiu', 'Rimnicu Vilcea', 'Pitesti', 'Bucharest',
+      'Zerind', 'Arad', 'Sibiu', 'Rimnicu Vilcea', 'Pitesti',
     ]);
+  });
+
+  // Same contract as BFS above: the goal is never a currentNode, so both algorithms
+  // report the same thing — cities expanded, goal excluded.
+  it('never makes Bucharest a currentNode, and finds it only on the last step', () => {
+    expect(steps.some((s) => s.currentNode === 'Bucharest')).toBe(false);
+    expect(steps.at(-1)?.finalPath).toContain('Bucharest');
+  });
+
+  it('last step: currentNode Pitesti, finalPath, Bucharest excluded from explored/frontier', () => {
+    const last = steps.at(-1)!;
+    expect(last.currentNode).toBe('Pitesti');
+    expect(last.pathCost).toBe(493);
+    expect(last.path).toEqual(last.finalPath);
+    expect(last.finalPath).toEqual(['Zerind', 'Arad', 'Sibiu', 'Rimnicu Vilcea', 'Pitesti', 'Bucharest']);
+    expect(last.explored).not.toContain('Bucharest');
+    expect(last.frontier).not.toContain('Bucharest');
   });
 
   it('keeps Oradea in a frontier but never in explored', () => {

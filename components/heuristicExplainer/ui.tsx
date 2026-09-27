@@ -198,7 +198,7 @@ export function Toggle<T extends string>({
   label,
 }: {
   value: T;
-  options: { value: T; label: string }[];
+  options: { value: T; label: ReactNode }[];
   onChange: (value: T) => void;
   label: string;
 }) {

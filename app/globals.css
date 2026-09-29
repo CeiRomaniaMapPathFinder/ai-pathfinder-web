@@ -43,6 +43,48 @@ body {
   background: rgba(103, 232, 249, 0.65);
 }
 
+/* The /page3 legend's key. The card stretches to fill the sidebar's leftover
+   height, so the key is a size container and scales with the height it gets:
+   two columns of small rows while it is short, one column of larger rows
+   once there is room — spread evenly either way, so a tall card still looks
+   balanced instead of three rows drifting apart. */
+.legend-fill {
+  container-type: size;
+}
+
+.legend-fill > ul {
+  display: grid;
+  height: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: space-evenly;
+  gap: 8px 12px;
+}
+
+.legend-fill li {
+  gap: 8px;
+  font-size: 9px;
+}
+
+.legend-swatch {
+  height: 14px;
+  aspect-ratio: 12 / 7;
+}
+
+@container (min-height: 200px) {
+  .legend-fill > ul {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .legend-fill li {
+    gap: 12px;
+    font-size: clamp(9px, calc(4px + 2.6cqh), 12px);
+  }
+
+  .legend-swatch {
+    height: clamp(14px, calc(4px + 5.5cqh), 22px);
+  }
+}
+
 /* Force vis-network's internally-created wrapper div + canvas to always
    match their container's box exactly (100%/100%), even if vis-network's
    own JS-computed inline pixel sizing lags a frame behind a flex/CSS layout

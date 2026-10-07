@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { TbChevronDown, TbCircleNumber1Filled, TbPlayerPlayFilled } from "react-icons/tb";
+import { TbBrandGithub, TbChevronDown, TbCircleNumber1Filled, TbPlayerPlayFilled } from "react-icons/tb";
 import { VscLocation } from "react-icons/vsc";
 import { buildDeviceIcon, pixelFont } from '../lib/pixelNetworkTheme';
 import { cityPositions } from '../lib/cityPositions';
@@ -583,15 +583,41 @@ export default function VisMap() {
           height: '100px',
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'space-between',
           padding: '0 20px',
-          fontSize: '30px',
-          fontWeight: 700,
-          letterSpacing: '2px',
-          color: '#a5f3fc',
-          textShadow: '0 0 10px rgba(34,211,238,0.9), 0 0 26px rgba(34,211,238,0.55)',
         }}
       >
-        ROMANIA MAP
+        <span
+          style={{
+            fontSize: '30px',
+            fontWeight: 700,
+            letterSpacing: '2px',
+            color: '#a5f3fc',
+            textShadow: '0 0 10px rgba(34,211,238,0.9), 0 0 26px rgba(34,211,238,0.55)',
+          }}
+        >
+          ROMANIA MAP
+        </span>
+        <a
+          href="https://github.com/orgs/CeiRomaniaMapPathFinder/repositories"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="CeiRomaniaMapPathFinder on GitHub"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '40px',
+            height: '40px',
+            borderRadius: '10px',
+            border: '1px solid rgba(34,211,238,0.3)',
+            background: '#0b1220',
+            color: '#67e8f9',
+            boxShadow: '0 0 14px rgba(34,211,238,0.25)',
+          }}
+        >
+          <TbBrandGithub size={20} />
+        </a>
       </header>
 
       <section style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 260px', height: 'calc(100% - 50px)', gap: '12px', marginTop: '10px', alignItems: 'stretch' }}>

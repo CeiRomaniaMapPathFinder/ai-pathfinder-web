@@ -214,19 +214,24 @@ export default function AStarTreeExplorer({ start, goal }: AStarTreeExplorerProp
     <div
       id="search-tree"
       ref={explorerRef}
-      className={`flex h-full w-full shrink-0 flex-col overflow-hidden bg-[#060a13] text-[#e2f8ff] ${pixelFont.className}`}
+      className={`flex w-full shrink-0 flex-col bg-[#060a13] text-[#e2f8ff] lg:h-full lg:overflow-hidden ${pixelFont.className}`}
     >
-      <header className="flex shrink-0 items-center gap-4 px-5 pt-5 pb-4">
+      {/* Below lg the explorer grows with its content (tree first, then the
+          cards) and the page scrolls; from lg it fills the first screen. */}
+      <header className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-3 px-3 pt-4 pb-3 sm:gap-x-4 sm:px-5 sm:pt-5 sm:pb-4">
         <Link
           href={`/page2?start=${encodeURIComponent(start)}&goal=${encodeURIComponent(goal)}`}
           aria-label="Back to the route comparison for this start and goal"
-          className="flex shrink-0 items-center gap-2 rounded-[14px] border border-cyan-500/30 bg-[#0b1220] px-3 py-2 text-[11px] font-bold text-[#67e8f9] shadow-[0_0_14px_rgba(34,211,238,0.25)] transition hover:shadow-[0_0_20px_rgba(34,211,238,0.45)]"
+          className="flex shrink-0 items-center gap-2 rounded-[14px] border border-cyan-500/30 bg-[#0b1220] px-2.5 py-2 text-[10px] sm:px-3 sm:text-[11px] font-bold text-[#67e8f9] shadow-[0_0_14px_rgba(34,211,238,0.25)] transition hover:shadow-[0_0_20px_rgba(34,211,238,0.45)]"
         >
           <IoIosArrowRoundBack size={20} color="#67e8f9" />
-          Back to Comparison
+          <span>
+            Back<span className="hidden sm:inline"> to Comparison</span>
+          </span>
         </Link>
 
-        <h1 className="flex min-w-0 shrink-0 items-baseline gap-1.5 truncate text-[15px] font-bold tracking-wide text-[#a5f3fc]">
+        {/* Below lg: the title takes its own row under the buttons. */}
+        <h1 className="order-last flex w-full min-w-0 items-baseline gap-1.5 truncate text-[13px] font-bold tracking-wide text-[#a5f3fc] sm:text-[15px] lg:order-none lg:w-auto lg:shrink-0">
           <span style={{ textShadow: '0 0 10px rgba(34,211,238,0.9), 0 0 20px rgba(34,211,238,0.5)' }}>A* SEARCH TREE</span>
           <span className="truncate font-bold text-[#22d3ee]">
             · {start} → {goal}
@@ -256,29 +261,31 @@ export default function AStarTreeExplorer({ start, goal }: AStarTreeExplorerProp
             container while the router's does not. */}
         <a
           href="#how-it-works"
-          className="ml-auto flex shrink-0 items-center gap-2 rounded-[14px] border border-cyan-500/30 bg-[#0b1220] px-3 py-2 text-[11px] font-bold text-[#67e8f9] transition hover:shadow-[0_0_20px_rgba(34,211,238,0.45)]"
+          className="ml-auto flex shrink-0 items-center gap-2 rounded-[14px] border border-cyan-500/30 bg-[#0b1220] px-2.5 py-2 text-[10px] sm:px-3 sm:text-[11px] font-bold text-[#67e8f9] transition hover:shadow-[0_0_20px_rgba(34,211,238,0.45)]"
         >
-          <TbArrowDown size={14} />
+          <TbArrowDown size={14} className="hidden sm:block" />
           How it works
         </a>
 
         <Link
           href={`/?start=${encodeURIComponent(start)}&goal=${encodeURIComponent(goal)}`}
-          className="flex shrink-0 items-center gap-2 rounded-[14px] border border-cyan-500/30 bg-[#0b1220] px-3 py-2 text-[11px] font-bold text-[#67e8f9] transition hover:shadow-[0_0_20px_rgba(34,211,238,0.45)]"
+          className="flex shrink-0 items-center gap-2 rounded-[14px] border border-cyan-500/30 bg-[#0b1220] px-2.5 py-2 text-[10px] sm:px-3 sm:text-[11px] font-bold text-[#67e8f9] transition hover:shadow-[0_0_20px_rgba(34,211,238,0.45)]"
         >
-          <TbRoute size={16} />
-          Change Route
+          <TbRoute size={16} className="hidden sm:block" />
+          <span>
+            <span className="hidden sm:inline">Change </span>Route
+          </span>
         </Link>
       </header>
 
-      <div className="flex min-h-0 flex-1 gap-4 px-5 pb-5">
+      <div className="flex flex-col gap-4 px-3 pb-5 sm:px-5 lg:min-h-0 lg:flex-1 lg:flex-row">
         {/* Two parts. The cards above change height as the search runs (a
             step can generate four neighbours or none), so they live in
             their own shrinking, scrollable box; the legend is a sibling
             that takes the slack, which both keeps the panel looking filled
             and stops the legend ever being pushed past the bottom. */}
-        <aside className="flex min-h-0 w-[380px] shrink-0 flex-col gap-3">
-          <div className="cyan-scrollbar flex min-h-0 flex-col gap-3 overflow-y-auto pr-1">
+        <aside className="flex w-full flex-col gap-3 lg:min-h-0 lg:w-[340px] lg:shrink-0 xl:w-[380px]">
+          <div className="cyan-scrollbar flex flex-col gap-3 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
             {tree && view ? (
               <>
                 <StepCard
@@ -300,8 +307,10 @@ export default function AStarTreeExplorer({ start, goal }: AStarTreeExplorerProp
           {tree && view && <LegendCard />}
         </aside>
 
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
-          <section className={`${CARD} flex min-h-0 flex-1 flex-col px-4 pt-3 pb-2`}>
+        <main className="order-first flex min-w-0 flex-col gap-3 lg:order-none lg:min-h-0 lg:flex-1">
+          {/* Stacked: a fixed share of the screen, so the tree has room to
+              draw; from lg it takes the column's remaining height. */}
+          <section className={`${CARD} flex h-[70vh] min-h-[420px] flex-col px-4 pt-3 pb-2 lg:h-auto lg:min-h-0 lg:flex-1`}>
             <div className="flex shrink-0 items-start justify-between gap-3">
               <div className="min-w-0">
                 <h2 className="flex items-center gap-2 text-[14px] font-bold leading-tight text-[#a5f3fc]" style={GLOW_TEXT}>
@@ -337,7 +346,8 @@ export default function AStarTreeExplorer({ start, goal }: AStarTreeExplorerProp
               )}
             </div>
 
-            <div className="mt-2 flex shrink-0 items-center gap-2">
+            {/* Phones: playback gets the full row, zoom wraps below it. */}
+            <div className="mt-2 flex shrink-0 flex-wrap items-center gap-2">
               <PlaybackBar
                 step={step}
                 maxStep={maxStep}
@@ -348,7 +358,7 @@ export default function AStarTreeExplorer({ start, goal }: AStarTreeExplorerProp
                 onTogglePlay={togglePlay}
                 onSpeedChange={setSpeed}
               />
-              <span className="h-5 w-px shrink-0 bg-cyan-500/20" />
+              <span className="hidden h-5 w-px shrink-0 bg-cyan-500/20 sm:block" />
               <ZoomControls scale={scale} isFit={zoom === 'fit'} onZoom={setZoom} />
             </div>
           </section>
@@ -703,7 +713,7 @@ function PlaybackBar({ step, maxStep, playing, speed, disabled, onGoTo, onToggle
     'flex h-7 w-7 items-center justify-center rounded-md text-[#7dd3fc] hover:bg-cyan-500/10 disabled:opacity-30';
 
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-1">
+    <div className="flex min-w-0 flex-1 basis-full items-center gap-1 sm:basis-0">
       <button type="button" title="Reset (Home)" onClick={() => onGoTo(0)} disabled={disabled} className={iconButton}>
         <TbPlayerSkipBackFilled size={14} />
       </button>

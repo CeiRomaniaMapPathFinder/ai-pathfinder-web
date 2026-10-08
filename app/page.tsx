@@ -27,23 +27,75 @@ const cityNames = initialNodes.map((node) => node.id);
 // icon + label below.
 const MAP_PAD = { left: 60, right: 60, top: 16, bottom: 48 };
 
-// Where the photo sits in the full-viewport main (see lib/mapProjection.ts).
-// Nodes are only visible inside the graph container (not under the title or
-// the sidebar), so that's the area the cities have to fit in.
-function computeViewportMapBox(graphRect: DOMRect) {
-  return computeMapBox(window.innerWidth, window.innerHeight, initialNodes, graphRect, MAP_PAD);
+// Icons, labels, edge numbers and MAP_PAD are sized for a desktop-width map.
+// A narrower graph area (phones) scales them down so all 20 cities still fit
+// without piling up, but never below MIN_SIZE_SCALE so names stay readable.
+const FULL_SIZE_GRAPH_WIDTH = 900;
+const MIN_SIZE_SCALE = 0.6;
+
+function sizeScaleFor(graphWidth: number) {
+  return Math.min(1, Math.max(MIN_SIZE_SCALE, graphWidth / FULL_SIZE_GRAPH_WIDTH));
 }
 
-// The photo is positioned against the whole viewport, but each visible
-// network container only covers part of it (e.g. the graph column, not the
-// sidebar) — so a node's local pixel position is its viewport pixel position
-// minus that container's own offset from the viewport origin.
-function computeNodePixelPositions(mapBox: MapBox, containerRect: { left: number; top: number }) {
+function scaledMapPad(scale: number) {
+  return {
+    left: MAP_PAD.left * scale,
+    right: MAP_PAD.right * scale,
+    top: MAP_PAD.top * scale,
+    bottom: MAP_PAD.bottom * scale,
+  };
+}
+
+// From Tailwind's lg up, the city picker floats beside the map over one
+// full-page photo; below it, the picker sits under the map (see the JSX).
+const SIDE_BY_SIDE_QUERY = '(min-width: 1024px)';
+
+// Where the photo sits inside <main> (see lib/mapProjection.ts), plus the
+// edge fade for that placement. Nodes are only visible inside the graph
+// container, so that's the area the cities have to fit in.
+function computePageMapPlacement(pageRect: DOMRect, graphRect: DOMRect, pad: typeof MAP_PAD) {
+  const graph = {
+    left: graphRect.left - pageRect.left,
+    top: graphRect.top - pageRect.top,
+    right: graphRect.right - pageRect.left,
+    bottom: graphRect.bottom - pageRect.top,
+  };
+
+  if (window.matchMedia(SIDE_BY_SIDE_QUERY).matches) {
+    // The photo fills the page, centred on the graph area rather than the
+    // window — otherwise the picker on the right pushes the cities off-centre
+    // and narrower windows shrink the map to fit.
+    const box = computeMapBox(pageRect.width, pageRect.height, initialNodes, graph, pad, {
+      center: { x: (graph.left + graph.right) / 2, y: (graph.top + graph.bottom) / 2 },
+    });
+    return { box, fade: mapEdgeFadeStyle(box, pageRect) };
+  }
+
+  // Stacked: the photo stays inside the graph area, so it never runs under the
+  // title or the picker below it.
+  const local = computeMapBox(
+    graphRect.width,
+    graphRect.height,
+    initialNodes,
+    { left: 0, top: 0, right: graphRect.width, bottom: graphRect.height },
+    pad,
+    { fit: 'contain' },
+  );
+  const box = { ...local, left: local.left + graph.left, top: local.top + graph.top };
+  return { box, fade: mapEdgeFadeStyle(local, graphRect) };
+}
+
+// The photo is positioned inside <main>, but each network container only
+// covers part of it (the graph column, not the sidebar) — so a node's local
+// pixel position is its position in <main> minus the container's offset.
+function computeNodePixelPositions(mapBox: MapBox, containerOffset: { left: number; top: number }) {
   return initialNodes.map((n) => {
     const { x, y } = projectCity(n, mapBox);
-    return { id: n.id, x: x - containerRect.left, y: y - containerRect.top };
+    return { id: n.id, x: x - containerOffset.left, y: y - containerOffset.top };
   });
 }
+
+type MapPlacement = ReturnType<typeof computePageMapPlacement>;
 
 const initialEdges = [
   { from: 'Arad', to: 'Zerind', label: '75' },
@@ -121,10 +173,10 @@ const serverIcon = buildDeviceIcon('server', 'goal');
 // current selection" — used both for the very first paint (see the prefill
 // effect below, which can set selectionRef before the network exists) and
 // for the per-selection-change update effect, so the two can't drift apart.
-function nodeVisualForSelection(nodeId: string, selection: { start: string; goal: string }) {
-  if (nodeId === selection.start) return { image: pcIcon, size: DEVICE_ICON_SIZE };
-  if (nodeId === selection.goal) return { image: serverIcon, size: DEVICE_ICON_SIZE };
-  return { image: idleRouterIcon, size: ROUTER_ICON_SIZE };
+function nodeVisualForSelection(nodeId: string, selection: { start: string; goal: string }, scale = 1) {
+  if (nodeId === selection.start) return { image: pcIcon, size: DEVICE_ICON_SIZE * scale };
+  if (nodeId === selection.goal) return { image: serverIcon, size: DEVICE_ICON_SIZE * scale };
+  return { image: idleRouterIcon, size: ROUTER_ICON_SIZE * scale };
 }
 
 // Draws every city name for one network instance: dark solid outline (with a
@@ -136,11 +188,16 @@ function drawCityLabels(
   ctx: CanvasRenderingContext2D,
   positions: Map<string, { x: number; y: number }>,
   selection: { start: string; goal: string },
+  scale: number,
 ) {
+  const fontSize = CITY_LABEL_FONT_SIZE * scale;
+  const padX = CITY_LABEL_PILL_PAD_X * scale;
+  const padY = CITY_LABEL_PILL_PAD_Y * scale;
+
   ctx.save();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
-  ctx.font = `${CITY_LABEL_FONT_SIZE}px ${pixelFont.style.fontFamily}`;
+  ctx.font = `${fontSize}px ${pixelFont.style.fontFamily}`;
 
   const bothPicked = Boolean(selection.start && selection.goal);
 
@@ -151,17 +208,17 @@ function drawCityLabels(
     const isEndpoint = node.id === selection.start || node.id === selection.goal;
     const fillColor = bothPicked && !isEndpoint ? CITY_LABEL_IDLE_DIM_COLOR : CITY_LABEL_COLOR;
 
-    const labelY = pos.y + CITY_LABEL_OFFSET_Y;
+    const labelY = pos.y + CITY_LABEL_OFFSET_Y * scale;
     const textWidth = ctx.measureText(node.label).width;
-    const pillW = textWidth + CITY_LABEL_PILL_PAD_X * 2;
-    const pillH = CITY_LABEL_FONT_SIZE + CITY_LABEL_PILL_PAD_Y * 2;
+    const pillW = textWidth + padX * 2;
+    const pillH = fontSize + padY * 2;
     const pillX = pos.x - pillW / 2;
-    const pillY = labelY - CITY_LABEL_PILL_PAD_Y;
+    const pillY = labelY - padY;
 
     const roundRect = (ctx as unknown as { roundRect?: (x: number, y: number, w: number, h: number, r: number) => void }).roundRect;
     ctx.beginPath();
     if (typeof roundRect === 'function') {
-      roundRect.call(ctx, pillX, pillY, pillW, pillH, CITY_LABEL_PILL_RADIUS);
+      roundRect.call(ctx, pillX, pillY, pillW, pillH, CITY_LABEL_PILL_RADIUS * scale);
     } else {
       ctx.rect(pillX, pillY, pillW, pillH);
     }
@@ -171,7 +228,7 @@ function drawCityLabels(
     ctx.shadowColor = CITY_LABEL_SHADOW_COLOR;
     ctx.shadowBlur = CITY_LABEL_SHADOW_BLUR;
     ctx.shadowOffsetY = CITY_LABEL_SHADOW_OFFSET_Y;
-    ctx.lineWidth = CITY_LABEL_STROKE_WIDTH;
+    ctx.lineWidth = CITY_LABEL_STROKE_WIDTH * scale;
     ctx.strokeStyle = CITY_LABEL_STROKE_COLOR;
     ctx.strokeText(node.label, pos.x, labelY);
 
@@ -261,6 +318,7 @@ function findPathEdgeIds(start: string, goal: string) {
 export default function VisMap() {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
+  const pageRef = useRef<HTMLElement>(null);
   const previewRefs = useRef<Array<HTMLDivElement | null>>([]);
   const networkRef = useRef<Network | null>(null);
   const previewNetworksRef = useRef<Network[]>([]);
@@ -270,11 +328,14 @@ export default function VisMap() {
   // Latest on-screen pixel position per city, kept in sync by
   // alignPreviewNetwork() and read every frame by drawCityLabels().
   const nodePixelPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  // Current sizeScaleFor() of the graph area — read by the label drawing and
+  // the selection effect, updated by alignPreviewNetwork().
+  const sizeScaleRef = useRef(1);
 
   const [selection, setSelection] = useState({ start: '', goal: '' });
   // null until measured on the client — the photo falls back to plain
   // object-fit: cover for the first paint, which matches on most screens.
-  const [mapBox, setMapBox] = useState<MapBox | null>(null);
+  const [mapPlacement, setMapPlacement] = useState<MapPlacement | null>(null);
 
   // Prefill Start/Goal from the URL (?start=..&goal=..) — used when arriving
   // back from the results page via "Back to Map", so the user can tweak one
@@ -302,6 +363,7 @@ export default function VisMap() {
     if (typeof window === 'undefined' || !containerRef.current) return;
 
     let resizeHandler: (() => void) | null = null;
+    let resizeObserver: ResizeObserver | null = null;
 
     import('vis-network/standalone').then(({ Network, DataSet }) => {
       if (!nodesDataSetRef.current) {
@@ -407,10 +469,18 @@ export default function VisMap() {
       // the view at scale 1 so network-unit == on-screen pixel exactly.
       const alignPreviewNetwork = (network: Network, container: HTMLDivElement) => {
         const rect = container.getBoundingClientRect();
-        if (rect.width === 0 || rect.height === 0) return;
-        const box = computeViewportMapBox(rect);
-        setMapBox((prev) => (sameMapBox(prev, box) ? prev : box));
-        const positions = computeNodePixelPositions(box, rect);
+        if (rect.width === 0 || rect.height === 0 || !pageRef.current) return;
+        const pageRect = pageRef.current.getBoundingClientRect();
+        const scale = sizeScaleFor(rect.width);
+        if (scale !== sizeScaleRef.current) {
+          sizeScaleRef.current = scale;
+          nodesDataSet.update(initialNodes.map(({ id }) => ({ id, ...nodeVisualForSelection(id, selectionRef.current, scale) })));
+          edgesDataSet.update(initialEdges.map((_, index) => ({ id: index, font: { size: EDGE_FONT_SIZE * scale } })));
+        }
+        const placement = computePageMapPlacement(pageRect, rect, scaledMapPad(scale));
+        const { box } = placement;
+        setMapPlacement((prev) => (prev && sameMapBox(prev.box, box) ? prev : placement));
+        const positions = computeNodePixelPositions(box, { left: rect.left - pageRect.left, top: rect.top - pageRect.top });
         nodesDataSet.update(positions);
         nodePixelPositionsRef.current = new Map(positions.map((p) => [p.id, { x: p.x, y: p.y }]));
         network.moveTo({ position: { x: rect.width / 2, y: rect.height / 2 }, scale: 1 });
@@ -425,7 +495,7 @@ export default function VisMap() {
       previewNetworksRef.current = previewContainers.map((container) => new Network(container, data, options));
       previewNetworksRef.current.forEach((network) => {
         network.on('afterDrawing', (ctx: CanvasRenderingContext2D) => {
-          drawCityLabels(ctx, nodePixelPositionsRef.current, selectionRef.current);
+          drawCityLabels(ctx, nodePixelPositionsRef.current, selectionRef.current, sizeScaleRef.current);
         });
       });
       previewNetworksRef.current.forEach((network, i) => alignPreviewNetwork(network, previewContainers[i]));
@@ -475,16 +545,20 @@ export default function VisMap() {
       networkRef.current.on('click', handleNodeClick);
       previewNetworksRef.current.forEach((network) => network.on('click', handleNodeClick));
 
-      // Re-align on resize — the container's pixel rect (and the photo's own
-      // pixel mapping, since it's window-sized) both change with the window.
+      // Re-align on resize — the container's pixel rect and the photo's own
+      // pixel mapping both change with the window, and the graph area can
+      // also change size on its own when the layout switches breakpoints.
       resizeHandler = () => {
         previewNetworksRef.current.forEach((network, i) => alignPreviewNetwork(network, previewContainers[i]));
       };
       window.addEventListener('resize', resizeHandler);
+      resizeObserver = new ResizeObserver(resizeHandler);
+      previewContainers.forEach((container) => resizeObserver?.observe(container));
     });
 
     return () => {
       if (resizeHandler) window.removeEventListener('resize', resizeHandler);
+      resizeObserver?.disconnect();
 
       if (networkRef.current) {
         networkRef.current.destroy();
@@ -500,7 +574,7 @@ export default function VisMap() {
 
     const updatedNodes = initialNodes.map((node) => ({
       id: node.id,
-      ...nodeVisualForSelection(node.id, selection),
+      ...nodeVisualForSelection(node.id, selection, sizeScaleRef.current),
     }));
 
     nodesDataSetRef.current.update(updatedNodes);
@@ -538,18 +612,12 @@ export default function VisMap() {
   }, [selection]);
 
   return (
+    // Phones and tablets: header, map, then the picker, and the page scrolls.
+    // From lg: one screen, the picker floating beside the map.
     <main
-      className={pixelFont.className}
-      style={{
-        position: 'relative',
-        boxSizing: 'border-box',
-        width: '100vw',
-        height: '100vh',
-        padding: '10px',
-        overflow: 'hidden',
-        background: '#060a13',
-        color: '#e2f8ff',
-      }}
+      ref={pageRef}
+      className={`relative box-border min-h-screen w-full overflow-x-hidden p-[10px] lg:h-screen lg:overflow-hidden ${pixelFont.className}`}
+      style={{ background: '#060a13', color: '#e2f8ff' }}
     >
       {/* The photo itself is the background now — no dark scrim over it.
           Legibility comes from the icon glow/outline + text-stroke treatment
@@ -559,8 +627,14 @@ export default function VisMap() {
           position: 'absolute',
           zIndex: 0,
           pointerEvents: 'none',
-          ...(mapBox
-            ? { left: mapBox.left, top: mapBox.top, width: mapBox.width, height: mapBox.height, ...mapEdgeFadeStyle(mapBox) }
+          ...(mapPlacement
+            ? {
+                left: mapPlacement.box.left,
+                top: mapPlacement.box.top,
+                width: mapPlacement.box.width,
+                height: mapPlacement.box.height,
+                ...mapPlacement.fade,
+              }
             : { inset: 0 }),
         }}
       >
@@ -571,25 +645,24 @@ export default function VisMap() {
           fill
           priority
           sizes="100vw"
-          style={{ objectFit: mapBox ? 'fill' : 'cover' }}
+          style={{ objectFit: mapPlacement ? 'fill' : 'cover' }}
         />
       </div>
 
       {/* No box here either — just a standout glowing title sitting on the map. */}
       <header
+        className="h-[64px] px-[10px] sm:px-5 lg:h-[100px]"
         style={{
           position: 'relative',
           zIndex: 1,
-          height: '100px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '0 20px',
         }}
       >
         <span
+          className="text-[22px] sm:text-[30px]"
           style={{
-            fontSize: '30px',
             fontWeight: 700,
             letterSpacing: '2px',
             color: '#a5f3fc',
@@ -620,12 +693,20 @@ export default function VisMap() {
         </a>
       </header>
 
-      <section style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 260px', height: 'calc(100% - 50px)', gap: '12px', marginTop: '10px', alignItems: 'stretch' }}>
+      {/* lg height: the 100px header plus its 10px margin, so the graph area
+          ends at the bottom of the screen and no city is placed below it. */}
+      <section
+        className="grid grid-cols-1 gap-3 lg:h-[calc(100%-110px)] lg:grid-cols-[minmax(0,1fr)_260px] lg:items-stretch"
+        style={{ position: 'relative', zIndex: 1, marginTop: '10px' }}
+      >
         {['Blind search'].map((title, index) => (
           // No card here on purpose — the graph sits directly on the map
           // background with no panel, border, or fill behind it.
+          // Stacked: the photo's own 3:2 shape, capped so the picker below
+          // stays in reach. From lg it fills its grid cell.
           <article
             key={title}
+            className="aspect-[3/2] max-h-[70vh] w-full lg:aspect-auto lg:max-h-none"
             style={{
               position: 'relative',
               minWidth: 0,
@@ -644,10 +725,10 @@ export default function VisMap() {
             after the Start Search button) instead of stretching to match the
             graph column's full height. */}
         <aside
+          className="w-full max-w-[420px] justify-self-center lg:mr-4 lg:max-w-none lg:justify-self-stretch"
           style={{
             position: 'relative',
             alignSelf: 'start',
-            marginRight: '16px',
             padding: '24px 18px',
             background: 'rgba(10,18,32,0.55)',
             backdropFilter: 'blur(8px)',

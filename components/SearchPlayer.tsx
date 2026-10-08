@@ -245,13 +245,14 @@ export default function SearchPlayer({
     >
       <div className="flex shrink-0 items-start justify-between gap-3">
         <div className="min-w-0">
+          {/* Phones wrap the title and status instead of cutting them off. */}
           <h2
-            className="truncate text-[14px] font-bold leading-tight text-[#a5f3fc]"
+            className="text-[13px] font-bold leading-tight text-[#a5f3fc] sm:truncate sm:text-[14px]"
             style={{ textShadow: '0 0 6px rgba(34,211,238,0.6)' }}
           >
             {title}
           </h2>
-          <p className="mt-0.5 truncate text-[11px] text-[#7dd3fc]">
+          <p className="mt-0.5 text-[11px] text-[#7dd3fc] sm:truncate">
             {statusLabel} · {pathText}
           </p>
         </div>
@@ -260,7 +261,9 @@ export default function SearchPlayer({
         </div>
       </div>
 
-      <div className="mt-1.5 min-h-0 flex-1">
+      {/* Stacked layouts give the map the photo's own 3:2 shape; from xl it
+          fills whatever height the column leaves it. */}
+      <div className="mt-1.5 aspect-[3/2] max-h-[70vh] w-full xl:aspect-auto xl:max-h-none xl:min-h-0 xl:flex-1">
         <RomaniaMap start={start} goal={goal} step={step} />
       </div>
 

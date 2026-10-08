@@ -405,7 +405,7 @@ export function RunBothButton() {
       type="button"
       onClick={bothComplete ? resetBoth : runBoth}
       disabled={!ready}
-      className="ml-auto flex shrink-0 items-center gap-2 rounded-[14px] bg-[#0891b2] px-4 py-2 text-[11px] font-bold text-[#f0fdff] shadow-[0_0_14px_rgba(34,211,238,0.4)] transition hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none"
+      className="ml-auto flex shrink-0 items-center gap-2 rounded-[14px] bg-[#0891b2] px-3 py-2 text-[10px] sm:px-4 sm:text-[11px] font-bold text-[#f0fdff] shadow-[0_0_14px_rgba(34,211,238,0.4)] transition hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none"
     >
       {bothComplete ? <TbRefresh size={14} /> : <TbPlayerPlayFilled size={12} />}
       {bothComplete ? 'Reset Both' : 'Run Both'}

@@ -14,7 +14,12 @@ export const MAP_IMAGE_HEIGHT = 1024;
 export type MapBox = { left: number; top: number; width: number; height: number };
 export type Rect = { left: number; top: number; right: number; bottom: number };
 
-// Behaves like `object-fit: cover` (fills the box, centered), except it
+// Optional placement: `center` is where the photo's middle goes (default: the
+// box's middle); `fit: 'contain'` keeps the whole photo inside the box instead
+// of filling it.
+export type MapBoxOptions = { center?: { x: number; y: number }; fit?: 'cover' | 'contain' };
+
+// Behaves like `object-fit: cover` (fills the box around `center`), except it
 // shrinks the photo whenever cover would push a city outside `safe` — the
 // part of the box where nodes are actually visible (in box coordinates). So a
 // short, wide card or a small window still shows every node. `pad` is the
@@ -26,10 +31,17 @@ export function computeMapBox(
   cities: CityPosition[],
   safe: Rect,
   pad: Rect,
+  options: MapBoxOptions = {},
 ): MapBox {
-  const centerX = boxWidth / 2;
-  const centerY = boxHeight / 2;
-  let scale = Math.max(boxWidth / MAP_IMAGE_WIDTH, boxHeight / MAP_IMAGE_HEIGHT);
+  const centerX = options.center?.x ?? boxWidth / 2;
+  const centerY = options.center?.y ?? boxHeight / 2;
+  // Cover from an off-centre point needs the photo to reach the farther edge on each axis.
+  let scale = options.fit === 'contain'
+    ? Math.min(boxWidth / MAP_IMAGE_WIDTH, boxHeight / MAP_IMAGE_HEIGHT)
+    : Math.max(
+        (2 * Math.max(centerX, boxWidth - centerX)) / MAP_IMAGE_WIDTH,
+        (2 * Math.max(centerY, boxHeight - centerY)) / MAP_IMAGE_HEIGHT,
+      );
 
   for (const city of cities) {
     // Offset from the photo's center, in photo pixels.
@@ -69,11 +81,14 @@ export function sameMapBox(a: MapBox | null, b: MapBox) {
 // When the photo is shrunk to fit, its edges sit inside the box — fade those
 // edges into the dark background instead of showing a hard line (the sea glow
 // on the right side is bright). Sides where the photo reaches the box edge
-// are left alone, so the usual cover look is unchanged.
-export function mapEdgeFadeStyle(box: MapBox) {
+// are left alone, so the usual cover look is unchanged. Pass the box's size
+// when the photo may not be centred, so a gap on the right or bottom counts too.
+export function mapEdgeFadeStyle(box: MapBox, frame?: { width: number; height: number }) {
+  const gapX = box.left > 0.5 || (!!frame && box.left + box.width < frame.width - 0.5);
+  const gapY = box.top > 0.5 || (!!frame && box.top + box.height < frame.height - 0.5);
   const gradients: string[] = [];
-  if (box.left > 0.5) gradients.push('linear-gradient(to right, transparent, #000 6%, #000 94%, transparent)');
-  if (box.top > 0.5) gradients.push('linear-gradient(to bottom, transparent, #000 6%, #000 94%, transparent)');
+  if (gapX) gradients.push('linear-gradient(to right, transparent, #000 6%, #000 94%, transparent)');
+  if (gapY) gradients.push('linear-gradient(to bottom, transparent, #000 6%, #000 94%, transparent)');
   if (gradients.length === 0) return {};
   const mask = gradients.join(', ');
   return {

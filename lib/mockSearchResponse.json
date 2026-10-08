@@ -6,8 +6,8 @@
       {
         "currentNode": "Oradea",
         "frontier": [
-          "Zerind",
-          "Sibiu"
+          "Sibiu",
+          "Zerind"
         ],
         "explored": [
           "Oradea"
@@ -21,34 +21,15 @@
         "done": false
       },
       {
-        "currentNode": "Zerind",
-        "frontier": [
-          "Sibiu",
-          "Arad"
-        ],
-        "explored": [
-          "Oradea",
-          "Zerind"
-        ],
-        "path": [
-          "Oradea",
-          "Zerind"
-        ],
-        "finalPath": [],
-        "pathCost": 71,
-        "nodesExplored": 2,
-        "done": false
-      },
-      {
         "currentNode": "Sibiu",
         "frontier": [
+          "Zerind",
           "Arad",
-          "Rimnicu Vilcea",
-          "Fagaras"
+          "Fagaras",
+          "Rimnicu Vilcea"
         ],
         "explored": [
           "Oradea",
-          "Zerind",
           "Sibiu"
         ],
         "path": [
@@ -57,186 +38,65 @@
         ],
         "finalPath": [],
         "pathCost": 151,
+        "nodesExplored": 2,
+        "done": false
+      },
+      {
+        "currentNode": "Zerind",
+        "frontier": [
+          "Arad",
+          "Fagaras",
+          "Rimnicu Vilcea"
+        ],
+        "explored": [
+          "Oradea",
+          "Sibiu",
+          "Zerind"
+        ],
+        "path": [
+          "Oradea",
+          "Zerind"
+        ],
+        "finalPath": [],
+        "pathCost": 71,
         "nodesExplored": 3,
         "done": false
       },
       {
         "currentNode": "Arad",
         "frontier": [
-          "Rimnicu Vilcea",
           "Fagaras",
+          "Rimnicu Vilcea",
           "Timisoara"
         ],
         "explored": [
           "Oradea",
-          "Zerind",
           "Sibiu",
+          "Zerind",
           "Arad"
         ],
         "path": [
           "Oradea",
-          "Zerind",
+          "Sibiu",
           "Arad"
         ],
         "finalPath": [],
-        "pathCost": 146,
+        "pathCost": 291,
         "nodesExplored": 4,
-        "done": false
-      },
-      {
-        "currentNode": "Rimnicu Vilcea",
-        "frontier": [
-          "Fagaras",
-          "Timisoara",
-          "Craiova",
-          "Pitesti"
-        ],
-        "explored": [
-          "Oradea",
-          "Zerind",
-          "Sibiu",
-          "Arad",
-          "Rimnicu Vilcea"
-        ],
-        "path": [
-          "Oradea",
-          "Sibiu",
-          "Rimnicu Vilcea"
-        ],
-        "finalPath": [],
-        "pathCost": 231,
-        "nodesExplored": 5,
         "done": false
       },
       {
         "currentNode": "Fagaras",
         "frontier": [
-          "Timisoara",
-          "Craiova",
-          "Pitesti",
-          "Bucharest"
-        ],
-        "explored": [
-          "Oradea",
-          "Zerind",
-          "Sibiu",
-          "Arad",
           "Rimnicu Vilcea",
-          "Fagaras"
-        ],
-        "path": [
-          "Oradea",
-          "Sibiu",
-          "Fagaras"
-        ],
-        "finalPath": [],
-        "pathCost": 250,
-        "nodesExplored": 6,
-        "done": false
-      },
-      {
-        "currentNode": "Timisoara",
-        "frontier": [
-          "Craiova",
-          "Pitesti",
-          "Bucharest",
-          "Lugoj"
-        ],
-        "explored": [
-          "Oradea",
-          "Zerind",
-          "Sibiu",
-          "Arad",
-          "Rimnicu Vilcea",
-          "Fagaras",
           "Timisoara"
         ],
-        "path": [
-          "Oradea",
-          "Zerind",
-          "Arad",
-          "Timisoara"
-        ],
-        "finalPath": [],
-        "pathCost": 264,
-        "nodesExplored": 7,
-        "done": false
-      },
-      {
-        "currentNode": "Craiova",
-        "frontier": [
-          "Pitesti",
-          "Bucharest",
-          "Lugoj",
-          "Drobeta"
-        ],
         "explored": [
           "Oradea",
+          "Sibiu",
           "Zerind",
-          "Sibiu",
           "Arad",
-          "Rimnicu Vilcea",
-          "Fagaras",
-          "Timisoara",
-          "Craiova"
-        ],
-        "path": [
-          "Oradea",
-          "Sibiu",
-          "Rimnicu Vilcea",
-          "Craiova"
-        ],
-        "finalPath": [],
-        "pathCost": 377,
-        "nodesExplored": 8,
-        "done": false
-      },
-      {
-        "currentNode": "Pitesti",
-        "frontier": [
-          "Bucharest",
-          "Lugoj",
-          "Drobeta"
-        ],
-        "explored": [
-          "Oradea",
-          "Zerind",
-          "Sibiu",
-          "Arad",
-          "Rimnicu Vilcea",
-          "Fagaras",
-          "Timisoara",
-          "Craiova",
-          "Pitesti"
-        ],
-        "path": [
-          "Oradea",
-          "Sibiu",
-          "Rimnicu Vilcea",
-          "Pitesti"
-        ],
-        "finalPath": [],
-        "pathCost": 328,
-        "nodesExplored": 9,
-        "done": false
-      },
-      {
-        "currentNode": "Bucharest",
-        "frontier": [
-          "Lugoj",
-          "Drobeta"
-        ],
-        "explored": [
-          "Oradea",
-          "Zerind",
-          "Sibiu",
-          "Arad",
-          "Rimnicu Vilcea",
-          "Fagaras",
-          "Timisoara",
-          "Craiova",
-          "Pitesti",
-          "Bucharest"
+          "Fagaras"
         ],
         "path": [
           "Oradea",
@@ -251,20 +111,24 @@
           "Bucharest"
         ],
         "pathCost": 461,
-        "nodesExplored": 10,
+        "nodesExplored": 5,
         "done": true
       }
     ],
-    "executionTimeMs": 5.31,
-    "memoryUsageKb": 420
+    "executionTimeMs": 0.00027560000000000003,
+    "memoryUsageKb": 1.0703125,
+    "timedRuns": 15000,
+    "nodesExpanded": 5,
+    "nodesGenerated": 12,
+    "peakNodesStored": 7
   },
   "astar": {
     "steps": [
       {
         "currentNode": "Oradea",
         "frontier": [
-          "Zerind",
-          "Sibiu"
+          "Sibiu",
+          "Zerind"
         ],
         "explored": [
           "Oradea"
@@ -278,56 +142,15 @@
         "done": false
       },
       {
-        "currentNode": "Zerind",
-        "frontier": [
-          "Arad",
-          "Sibiu"
-        ],
-        "explored": [
-          "Oradea",
-          "Zerind"
-        ],
-        "path": [
-          "Oradea",
-          "Zerind"
-        ],
-        "finalPath": [],
-        "pathCost": 71,
-        "nodesExplored": 2,
-        "done": false
-      },
-      {
-        "currentNode": "Arad",
-        "frontier": [
-          "Sibiu",
-          "Timisoara"
-        ],
-        "explored": [
-          "Oradea",
-          "Zerind",
-          "Arad"
-        ],
-        "path": [
-          "Oradea",
-          "Zerind",
-          "Arad"
-        ],
-        "finalPath": [],
-        "pathCost": 146,
-        "nodesExplored": 3,
-        "done": false
-      },
-      {
         "currentNode": "Sibiu",
         "frontier": [
-          "Rimnicu Vilcea",
+          "Zerind",
+          "Arad",
           "Fagaras",
-          "Timisoara"
+          "Rimnicu Vilcea"
         ],
         "explored": [
           "Oradea",
-          "Zerind",
-          "Arad",
           "Sibiu"
         ],
         "path": [
@@ -336,21 +159,20 @@
         ],
         "finalPath": [],
         "pathCost": 151,
-        "nodesExplored": 4,
+        "nodesExplored": 2,
         "done": false
       },
       {
         "currentNode": "Rimnicu Vilcea",
         "frontier": [
+          "Zerind",
+          "Arad",
           "Fagaras",
-          "Timisoara",
-          "Pitesti",
-          "Craiova"
+          "Craiova",
+          "Pitesti"
         ],
         "explored": [
           "Oradea",
-          "Zerind",
-          "Arad",
           "Sibiu",
           "Rimnicu Vilcea"
         ],
@@ -361,78 +183,21 @@
         ],
         "finalPath": [],
         "pathCost": 231,
-        "nodesExplored": 5,
-        "done": false
-      },
-      {
-        "currentNode": "Fagaras",
-        "frontier": [
-          "Timisoara",
-          "Pitesti",
-          "Craiova",
-          "Bucharest"
-        ],
-        "explored": [
-          "Oradea",
-          "Zerind",
-          "Arad",
-          "Sibiu",
-          "Rimnicu Vilcea",
-          "Fagaras"
-        ],
-        "path": [
-          "Oradea",
-          "Sibiu",
-          "Fagaras"
-        ],
-        "finalPath": [],
-        "pathCost": 250,
-        "nodesExplored": 6,
-        "done": false
-      },
-      {
-        "currentNode": "Timisoara",
-        "frontier": [
-          "Pitesti",
-          "Lugoj",
-          "Craiova",
-          "Bucharest"
-        ],
-        "explored": [
-          "Oradea",
-          "Zerind",
-          "Arad",
-          "Sibiu",
-          "Rimnicu Vilcea",
-          "Fagaras",
-          "Timisoara"
-        ],
-        "path": [
-          "Oradea",
-          "Zerind",
-          "Arad",
-          "Timisoara"
-        ],
-        "finalPath": [],
-        "pathCost": 264,
-        "nodesExplored": 7,
+        "nodesExplored": 3,
         "done": false
       },
       {
         "currentNode": "Pitesti",
         "frontier": [
-          "Lugoj",
-          "Craiova",
-          "Bucharest"
+          "Zerind",
+          "Arad",
+          "Fagaras",
+          "Craiova"
         ],
         "explored": [
           "Oradea",
-          "Zerind",
-          "Arad",
           "Sibiu",
           "Rimnicu Vilcea",
-          "Fagaras",
-          "Timisoara",
           "Pitesti"
         ],
         "path": [
@@ -443,86 +208,22 @@
         ],
         "finalPath": [],
         "pathCost": 328,
-        "nodesExplored": 8,
-        "done": false
-      },
-      {
-        "currentNode": "Lugoj",
-        "frontier": [
-          "Craiova",
-          "Bucharest",
-          "Mehadia"
-        ],
-        "explored": [
-          "Oradea",
-          "Zerind",
-          "Arad",
-          "Sibiu",
-          "Rimnicu Vilcea",
-          "Fagaras",
-          "Timisoara",
-          "Pitesti",
-          "Lugoj"
-        ],
-        "path": [
-          "Oradea",
-          "Zerind",
-          "Arad",
-          "Timisoara",
-          "Lugoj"
-        ],
-        "finalPath": [],
-        "pathCost": 375,
-        "nodesExplored": 9,
-        "done": false
-      },
-      {
-        "currentNode": "Craiova",
-        "frontier": [
-          "Bucharest",
-          "Mehadia",
-          "Drobeta"
-        ],
-        "explored": [
-          "Oradea",
-          "Zerind",
-          "Arad",
-          "Sibiu",
-          "Rimnicu Vilcea",
-          "Fagaras",
-          "Timisoara",
-          "Pitesti",
-          "Lugoj",
-          "Craiova"
-        ],
-        "path": [
-          "Oradea",
-          "Sibiu",
-          "Rimnicu Vilcea",
-          "Craiova"
-        ],
-        "finalPath": [],
-        "pathCost": 377,
-        "nodesExplored": 10,
+        "nodesExplored": 4,
         "done": false
       },
       {
         "currentNode": "Bucharest",
         "frontier": [
-          "Mehadia",
-          "Drobeta"
+          "Zerind",
+          "Arad",
+          "Fagaras",
+          "Craiova"
         ],
         "explored": [
           "Oradea",
-          "Zerind",
-          "Arad",
           "Sibiu",
           "Rimnicu Vilcea",
-          "Fagaras",
-          "Timisoara",
           "Pitesti",
-          "Lugoj",
-          "Craiova",
           "Bucharest"
         ],
         "path": [
@@ -540,11 +241,16 @@
           "Bucharest"
         ],
         "pathCost": 429,
-        "nodesExplored": 11,
+        "nodesExplored": 5,
         "done": true
       }
     ],
-    "executionTimeMs": 2.31,
-    "memoryUsageKb": 850
+    "executionTimeMs": 0.0004773,
+    "memoryUsageKb": 1.875,
+    "timedRuns": 15000,
+    "nodesExpanded": 5,
+    "nodesGenerated": 12,
+    "peakNodesStored": 9,
+    "heuristicPrecomputeMs": 12.0895
   }
 }

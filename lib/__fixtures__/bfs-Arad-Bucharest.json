@@ -18,7 +18,7 @@
       "Bucharest"
     ]
   },
-  "totalNodes": 8,
+  "totalNodes": 9,
   "distance": 450,
   "path": [
     "Arad",
@@ -26,7 +26,7 @@
     "Fagaras",
     "Bucharest"
   ],
-  "runtime": 0.0315,
+  "runtime": 0.0006578,
   "expanded": [
     "Arad",
     "Sibiu",
@@ -34,5 +34,9 @@
     "Zerind",
     "Fagaras"
   ],
-  "memoryUsageKb": 1.90625
+  "memoryUsageKb": 1.2734375,
+  "timedRuns": 15000,
+  "nodesExpanded": 5,
+  "nodesGenerated": 12,
+  "peakNodesStored": 8
 }

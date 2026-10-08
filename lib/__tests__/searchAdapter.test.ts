@@ -81,26 +81,25 @@ describe('A* Arad -> Bucharest', () => {
 describe('A* Zerind -> Bucharest', () => {
   const { steps } = mapAStarResponse(astarZerindBucharest as AStarResponse, 'Zerind');
 
-  it('expands in order Zerind, Arad, Sibiu, Rimnicu Vilcea, Pitesti', () => {
+  it('expands in order Zerind, Arad, Sibiu, Rimnicu Vilcea, Pitesti, Bucharest', () => {
     expect(steps.map((s) => s.currentNode)).toEqual([
-      'Zerind', 'Arad', 'Sibiu', 'Rimnicu Vilcea', 'Pitesti',
+      'Zerind', 'Arad', 'Sibiu', 'Rimnicu Vilcea', 'Pitesti', 'Bucharest',
     ]);
   });
 
-  // Same contract as BFS above: the goal is never a currentNode, so both algorithms
-  // report the same thing — cities expanded, goal excluded.
-  it('never makes Bucharest a currentNode, and finds it only on the last step', () => {
-    expect(steps.some((s) => s.currentNode === 'Bucharest')).toBe(false);
-    expect(steps.at(-1)?.finalPath).toContain('Bucharest');
+  // Unlike BFS, A* has to take the goal off the frontier to know its path is the
+  // cheapest, so that expansion is a real step and is counted.
+  it('expands Bucharest only on the last step', () => {
+    expect(steps.slice(0, -1).some((s) => s.currentNode === 'Bucharest')).toBe(false);
+    expect(steps.at(-1)?.currentNode).toBe('Bucharest');
   });
 
-  it('last step: currentNode Pitesti, finalPath, Bucharest excluded from explored/frontier', () => {
+  it('last step: currentNode Bucharest, finalPath, Bucharest explored and off the frontier', () => {
     const last = steps.at(-1)!;
-    expect(last.currentNode).toBe('Pitesti');
     expect(last.pathCost).toBe(493);
     expect(last.path).toEqual(last.finalPath);
     expect(last.finalPath).toEqual(['Zerind', 'Arad', 'Sibiu', 'Rimnicu Vilcea', 'Pitesti', 'Bucharest']);
-    expect(last.explored).not.toContain('Bucharest');
+    expect(last.explored).toContain('Bucharest');
     expect(last.frontier).not.toContain('Bucharest');
   });
 
@@ -115,18 +114,48 @@ describe('A* Zerind -> Bucharest', () => {
 });
 
 describe('start == end', () => {
-  it('BFS emits one synthetic step', () => {
+  it('BFS emits one synthetic step and expands nothing', () => {
     const { steps } = mapBfsResponse(bfsAradArad as BfsResponse, 'Arad', 'Arad');
     expect(steps).toEqual([
-      { currentNode: 'Arad', frontier: [], explored: ['Arad'], path: ['Arad'], finalPath: ['Arad'], pathCost: 0, nodesExplored: 1, done: true },
+      { currentNode: 'Arad', frontier: [], explored: ['Arad'], path: ['Arad'], finalPath: ['Arad'], pathCost: 0, nodesExplored: 0, done: true },
     ]);
   });
 
-  it('A* emits one synthetic step', () => {
+  it('A* emits one step: expanding the start, which is the goal', () => {
     const { steps } = mapAStarResponse(astarAradArad as AStarResponse, 'Arad');
     expect(steps).toEqual([
       { currentNode: 'Arad', frontier: [], explored: ['Arad'], path: ['Arad'], finalPath: ['Arad'], pathCost: 0, nodesExplored: 1, done: true },
     ]);
+  });
+});
+
+describe('measurements', () => {
+  const runs = [
+    { name: 'bfs Arad->Bucharest', res: bfsAradBucharest, result: mapBfsResponse(bfsAradBucharest as BfsResponse, 'Arad', 'Bucharest') },
+    { name: 'astar Arad->Bucharest', res: astarAradBucharest, result: mapAStarResponse(astarAradBucharest as AStarResponse, 'Arad') },
+    { name: 'bfs Zerind->Bucharest', res: bfsZerindBucharest, result: mapBfsResponse(bfsZerindBucharest as BfsResponse, 'Zerind', 'Bucharest') },
+    { name: 'astar Zerind->Bucharest', res: astarZerindBucharest, result: mapAStarResponse(astarZerindBucharest as AStarResponse, 'Zerind') },
+    { name: 'bfs Arad->Arad', res: bfsAradArad, result: mapBfsResponse(bfsAradArad as BfsResponse, 'Arad', 'Arad') },
+    { name: 'astar Arad->Arad', res: astarAradArad, result: mapAStarResponse(astarAradArad as AStarResponse, 'Arad') },
+  ];
+
+  it('animation ends on the backend nodesExpanded for every fixture', () => {
+    for (const { name, res, result } of runs) {
+      expect(result.steps.at(-1)?.nodesExplored, name).toBe(res.nodesExpanded);
+    }
+  });
+
+  it('passes the backend time, memory and counters through unchanged', () => {
+    for (const { name, res, result } of runs) {
+      expect(result.executionTimeMs, name).toBe(res.runtime);
+      expect(result.memoryUsageKb, name).toBe(res.memoryUsageKb);
+      expect(result.timedRuns, name).toBe(res.timedRuns);
+      expect(result.nodesGenerated, name).toBe(res.nodesGenerated);
+      expect(result.peakNodesStored, name).toBe(res.peakNodesStored);
+    }
+    expect(mapAStarResponse(astarAradBucharest as AStarResponse, 'Arad').heuristicPrecomputeMs).toBe(
+      astarAradBucharest.heuristicPrecomputeMs,
+    );
   });
 });
 

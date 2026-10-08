@@ -1,7 +1,7 @@
 {
   "totalNodes": 1,
   "distance": 0,
-  "runtime": 0.029959,
+  "runtime": 0.0001171,
   "path": [
     "Arad"
   ],
@@ -11,10 +11,15 @@
         "town": "Arad",
         "expandedAt": 0,
         "gn": 0,
-        "hn": 0,
-        "fn": 0
+        "fn": 0,
+        "hn": 0
       }
     ]
   },
-  "memoryUsageKb": 0.9453125
+  "memoryUsageKb": 0.671875,
+  "timedRuns": 15000,
+  "nodesExpanded": 1,
+  "nodesGenerated": 0,
+  "peakNodesStored": 1,
+  "heuristicPrecomputeMs": 12.0895
 }

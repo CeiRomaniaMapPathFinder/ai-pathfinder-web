@@ -8,6 +8,7 @@ import {
   HeuristicExplainerCard,
   LiveComparisonRows,
   LivePerformanceRows,
+  MeasurementNote,
   MapLegendCard,
   RunBothButton,
   SearchAnimationProvider,
@@ -164,9 +165,7 @@ export default async function PageTwo({ searchParams }: PageTwoProps) {
                 </h2>
                 <CgPerformance size={24} color="#67e8f9" className="mt-1 ml-3" />
               </div>
-              <p className="text-[10px] text-[#5b7a94]">
-                Path cost and explored nodes follow the current animation step.
-              </p>
+              <MeasurementNote />
             </div>
 
             <div className="flex flex-1 flex-col justify-around">

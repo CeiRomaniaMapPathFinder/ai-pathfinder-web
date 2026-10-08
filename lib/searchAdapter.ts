@@ -3,12 +3,18 @@ import type { AlgorithmResult, SearchTraceStep } from './searchApi';
 
 export type AStarNode = { town: string; gn: number; hn: number; fn: number; expandedAt: number };
 
+// runtime / memoryUsageKb are the median per search over `timedRuns` untraced runs on the
+// server; the node counters follow the same rules for both algorithms (see the API's BfsSearch).
 type BackendRun = {
   totalNodes: number;
   distance: number;
   path: string[];
   runtime: number;
   memoryUsageKb: number;
+  timedRuns: number;
+  nodesExpanded: number;
+  nodesGenerated: number;
+  peakNodesStored: number;
 };
 
 export type BfsResponse = BackendRun & {
@@ -18,6 +24,7 @@ export type BfsResponse = BackendRun & {
 
 export type AStarResponse = BackendRun & {
   routes: Record<string, AStarNode[]>;
+  heuristicPrecomputeMs: number;
 };
 
 const UNEXPECTED_RESPONSE = 'The search backend returned an unexpected response.';
@@ -61,13 +68,14 @@ function makeStep(
   };
 }
 
-function syntheticStep(start: string): SearchTraceStep {
-  return makeStep(start, [], [start], [start], [start], 0, true);
+// BFS answers start == goal before expanding anything, so it reports 0 nodes expanded.
+function syntheticStep(start: string, nodesExplored: number): SearchTraceStep {
+  return { ...makeStep(start, [], [start], [start], [start], 0, true), nodesExplored };
 }
 
 function bfsSteps(res: BfsResponse, start: string, goal: string): SearchTraceStep[] {
   const { expanded, routes } = res;
-  if (expanded.length === 0) return [syntheticStep(start)];
+  if (expanded.length === 0) return [syntheticStep(start, 0)];
 
   const parent = new Map<string, string>();
   expanded.forEach((city, k) => {
@@ -108,7 +116,7 @@ function bfsSteps(res: BfsResponse, start: string, goal: string): SearchTraceSte
 function aStarSteps(res: AStarResponse, start: string): SearchTraceStep[] {
   const routes = res.routes;
   const count = Object.keys(routes).length;
-  if (count === 0) return [syntheticStep(start)];
+  if (count === 0) return [syntheticStep(start, 1)];
 
   const parentStep = new Map<number, number>();
   for (let j = 0; j < count; j++) {
@@ -128,10 +136,10 @@ function aStarSteps(res: AStarResponse, start: string): SearchTraceStep[] {
   const explored = new Set<string>();
   const steps: SearchTraceStep[] = [];
 
-  // A*'s last list is the goal being popped again, which BFS never does with its goal — see the
-  // note in bfsSteps. Dropping it puts both counts on one scale: cities expanded, goal excluded.
+  // A*'s last list is the goal being taken off the frontier: A* must do that to know the path is
+  // optimal, so it is a real expansion and is kept. BFS stops when it first generates the goal.
   const goal = res.path[res.path.length - 1];
-  const last = count > 1 ? count - 2 : count - 1;
+  const last = count - 1;
 
   for (let k = 0; k <= last; k++) {
     const current = routes[k][0];
@@ -163,14 +171,24 @@ function aStarSteps(res: AStarResponse, start: string): SearchTraceStep[] {
   return steps;
 }
 
+function measurements(res: BackendRun) {
+  return {
+    executionTimeMs: res.runtime,
+    memoryUsageKb: res.memoryUsageKb,
+    timedRuns: res.timedRuns,
+    nodesExpanded: res.nodesExpanded,
+    nodesGenerated: res.nodesGenerated,
+    peakNodesStored: res.peakNodesStored,
+  };
+}
+
 export function mapBfsResponse(res: BfsResponse, start: string, goal: string): AlgorithmResult {
   if (!res || !res.routes || !Array.isArray(res.expanded) || !Array.isArray(res.path)) {
     throw new Error(UNEXPECTED_RESPONSE);
   }
   return {
     steps: bfsSteps(res, start, goal),
-    executionTimeMs: res.runtime,
-    memoryUsageKb: res.memoryUsageKb,
+    ...measurements(res),
   };
 }
 
@@ -180,8 +198,8 @@ export function mapAStarResponse(res: AStarResponse, start: string): AlgorithmRe
   }
   return {
     steps: aStarSteps(res, start),
-    executionTimeMs: res.runtime,
-    memoryUsageKb: res.memoryUsageKb,
+    ...measurements(res),
+    heuristicPrecomputeMs: res.heuristicPrecomputeMs,
   };
 }
 

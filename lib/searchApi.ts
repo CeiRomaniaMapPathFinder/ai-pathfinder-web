@@ -46,13 +46,27 @@ export type SearchTraceStep = {
   done: boolean;
 };
 
-/** One algorithm's full run: the animation frames plus its measured cost. */
+/**
+ * One algorithm's full run: the animation frames plus its measured cost. Time and memory are
+ * measured the same way for both algorithms: the search alone (no trace, no network), run
+ * `timedRuns` times on the server, median per search.
+ */
 export type AlgorithmResult = {
   steps: SearchTraceStep[];
-  /** Real measured wall-clock time on the server. Drives "Execution Time". */
+  /** Median wall-clock time of one search. Drives "Search Time". */
   executionTimeMs: number;
-  /** Real measured memory on the server. Drives "Memory Usage". */
+  /** Median JVM bytes allocated by one search, in KB. Drives "Memory Allocated". */
   memoryUsageKb: number;
+  /** How many timed searches the two medians above come from. */
+  timedRuns: number;
+  /** Cities taken off the frontier and expanded (A* includes the goal). */
+  nodesExpanded: number;
+  /** Neighbours looked at while expanding. */
+  nodesGenerated: number;
+  /** Most frontier entries + expanded cities held at once. Drives "Peak Nodes Stored". */
+  peakNodesStored: number;
+  /** A* only: one-off time to build the heuristic tables at server start, not part of a search. */
+  heuristicPrecomputeMs?: number;
 };
 
 /** What a single request returns: both algorithms, for one start/goal pair. */
@@ -134,10 +148,9 @@ export async function fetchSearchComparison(
   const base = API_URL.replace(/\/+$/, '');
   const query = new URLSearchParams({ start, end: goal }).toString();
 
-  const [bfs, astar] = await Promise.all([
-    getJson<BfsResponse>(`${base}/api/blind-search?${query}`, base, signal),
-    getJson<AStarResponse>(`${base}/api/heuristic-search?${query}`, base, signal),
-  ]);
+  // One after the other, so the two server-side timings never compete for the CPU.
+  const bfs = await getJson<BfsResponse>(`${base}/api/blind-search?${query}`, base, signal);
+  const astar = await getJson<AStarResponse>(`${base}/api/heuristic-search?${query}`, base, signal);
 
   return normalize({
     bfs: mapBfsResponse(bfs, start, goal),

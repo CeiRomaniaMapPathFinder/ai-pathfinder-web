@@ -1,7 +1,7 @@
 {
   "totalNodes": 10,
   "distance": 493,
-  "runtime": 0.0735,
+  "runtime": 0.0008012000000000001,
   "path": [
     "Zerind",
     "Arad",
@@ -16,22 +16,22 @@
         "town": "Zerind",
         "expandedAt": 0,
         "gn": 0,
-        "hn": 531,
-        "fn": 531
+        "fn": 531,
+        "hn": 531
       },
       {
         "town": "Arad",
         "expandedAt": 1,
         "gn": 75,
-        "hn": 453,
-        "fn": 528
+        "fn": 528,
+        "hn": 453
       },
       {
         "town": "Oradea",
         "expandedAt": -1,
         "gn": 71,
-        "hn": 464,
-        "fn": 535
+        "fn": 535,
+        "hn": 464
       }
     ],
     "1": [
@@ -39,29 +39,29 @@
         "town": "Arad",
         "expandedAt": 1,
         "gn": 75,
-        "hn": 453,
-        "fn": 528
+        "fn": 528,
+        "hn": 453
       },
       {
         "town": "Sibiu",
         "expandedAt": 2,
         "gn": 215,
-        "hn": 302,
-        "fn": 517
+        "fn": 517,
+        "hn": 302
       },
       {
         "town": "Timisoara",
         "expandedAt": -1,
         "gn": 193,
-        "hn": 584,
-        "fn": 777
+        "fn": 777,
+        "hn": 584
       },
       {
         "town": "Zerind",
         "expandedAt": -1,
         "gn": 150,
-        "hn": 531,
-        "fn": 681
+        "fn": 681,
+        "hn": 531
       }
     ],
     "2": [
@@ -69,36 +69,36 @@
         "town": "Sibiu",
         "expandedAt": 2,
         "gn": 215,
-        "hn": 302,
-        "fn": 517
+        "fn": 517,
+        "hn": 302
       },
       {
         "town": "Arad",
         "expandedAt": -1,
         "gn": 355,
-        "hn": 453,
-        "fn": 808
+        "fn": 808,
+        "hn": 453
       },
       {
         "town": "Fagaras",
         "expandedAt": -1,
         "gn": 314,
-        "hn": 219,
-        "fn": 533
+        "fn": 533,
+        "hn": 219
       },
       {
         "town": "Oradea",
         "expandedAt": -1,
         "gn": 366,
-        "hn": 464,
-        "fn": 830
+        "fn": 830,
+        "hn": 464
       },
       {
         "town": "Rimnicu Vilcea",
         "expandedAt": 3,
         "gn": 295,
-        "hn": 212,
-        "fn": 507
+        "fn": 507,
+        "hn": 212
       }
     ],
     "3": [
@@ -106,29 +106,29 @@
         "town": "Rimnicu Vilcea",
         "expandedAt": 3,
         "gn": 295,
-        "hn": 212,
-        "fn": 507
+        "fn": 507,
+        "hn": 212
       },
       {
         "town": "Craiova",
         "expandedAt": -1,
         "gn": 441,
-        "hn": 256,
-        "fn": 697
+        "fn": 697,
+        "hn": 256
       },
       {
         "town": "Pitesti",
         "expandedAt": 4,
         "gn": 392,
-        "hn": 106,
-        "fn": 498
+        "fn": 498,
+        "hn": 106
       },
       {
         "town": "Sibiu",
         "expandedAt": -1,
         "gn": 375,
-        "hn": 302,
-        "fn": 677
+        "fn": 677,
+        "hn": 302
       }
     ],
     "4": [
@@ -136,29 +136,29 @@
         "town": "Pitesti",
         "expandedAt": 4,
         "gn": 392,
-        "hn": 106,
-        "fn": 498
+        "fn": 498,
+        "hn": 106
       },
       {
         "town": "Bucharest",
         "expandedAt": 5,
         "gn": 493,
-        "hn": 0,
-        "fn": 493
+        "fn": 493,
+        "hn": 0
       },
       {
         "town": "Craiova",
         "expandedAt": -1,
         "gn": 530,
-        "hn": 256,
-        "fn": 786
+        "fn": 786,
+        "hn": 256
       },
       {
         "town": "Rimnicu Vilcea",
         "expandedAt": -1,
         "gn": 489,
-        "hn": 212,
-        "fn": 701
+        "fn": 701,
+        "hn": 212
       }
     ],
     "5": [
@@ -166,10 +166,15 @@
         "town": "Bucharest",
         "expandedAt": 5,
         "gn": 493,
-        "hn": 0,
-        "fn": 493
+        "fn": 493,
+        "hn": 0
       }
     ]
   },
-  "memoryUsageKb": 5.3984375
+  "memoryUsageKb": 2.03125,
+  "timedRuns": 15000,
+  "nodesExpanded": 6,
+  "nodesGenerated": 15,
+  "peakNodesStored": 10,
+  "heuristicPrecomputeMs": 12.0895
 }

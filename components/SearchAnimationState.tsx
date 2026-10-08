@@ -25,9 +25,10 @@ import { GLASS_CARD } from '../lib/uiTheme';
 const EMPTY_TRACE: SearchTraceStep[] = [];
 
 // Both keep the "<number> <unit>" shape, because LivePerformanceRows below
-// reads these back out with Number.parseFloat().
-const formatMs = (value: number | undefined) => `${(value ?? 0).toFixed(2)} ms`;
-const formatKb = (value: number | undefined) => `${Math.round(value ?? 0)} KB`;
+// reads these back out with Number.parseFloat(). One search takes about a
+// microsecond, so time is shown in µs; milliseconds would round it to 0.00.
+const formatUs = (ms: number | undefined) => `${((ms ?? 0) * 1000).toFixed(2)} µs`;
+const formatKb = (value: number | undefined) => `${(value ?? 0).toFixed(2)} KB`;
 
 // Reused by MapLegendCard below — same icon assets the maps themselves draw
 // (see components/RomaniaMap.tsx / app/page.tsx), built once at module scope
@@ -37,6 +38,9 @@ const legendGoalIcon = buildDeviceIcon('server', 'goal');
 const legendCurrentIcon = buildDeviceIcon('router', 'current');
 const legendFrontierIcon = buildDeviceIcon('router', 'frontier');
 const legendVisitedIcon = buildDeviceIcon('router', 'explored');
+
+// Marks the better (lower) value in the BFS vs. A* table.
+const BETTER_TEXT = 'text-[#4ade80] [text-shadow:0_0_8px_rgba(74,222,128,0.6)]';
 
 const SIDE_CARD_CLASS = `${GLASS_CARD} p-5`;
 const SIDE_CARD_TITLE_GLOW = { textShadow: '0 0 8px rgba(34,211,238,0.7)' } as const;
@@ -51,13 +55,25 @@ type LiveState = {
   index: number;
 };
 
+type Winner = 'bfs' | 'astar' | null;
+
 type ComparisonItem = {
   label: string;
+  /** One line saying what the row measures. */
+  hint: string;
   bfs: string;
   astar: string;
   bfsFinal: string;
   astarFinal: string;
+  /** Side with the lower (better) value; null on a tie or before it can be judged. */
+  better: Winner;
 };
+
+// Every row is lower-is-better.
+function lowerWins(bfs: number | undefined, astar: number | undefined, judge = true): Winner {
+  if (!judge || bfs === undefined || astar === undefined || bfs === astar) return null;
+  return bfs < astar ? 'bfs' : 'astar';
+}
 
 type SearchAnimationContextValue = {
   start?: string;
@@ -91,6 +107,8 @@ type SearchAnimationContextValue = {
   /** Where the backend request is up to — drives the header status note. */
   status: SearchStatus;
   error: string | null;
+  /** One-off A* heuristic table build at server start, excluded from search time. */
+  heuristicPrecomputeMs?: number;
 };
 
 const SearchAnimationContext = createContext<SearchAnimationContextValue | null>(null);
@@ -178,16 +196,26 @@ export function SearchAnimationProvider({ start, goal, children }: ProviderProps
 
   const { canRunBoth, bothComplete } = getRunBothState(bfsTrace, astarTrace, bfsLive.step, astarLive.step);
 
+  // Path cost and nodes expanded change during playback, so a winner is only
+  // marked once both animations have reached their final step.
+  const bothFinished = Boolean(bfsLive.step?.done && astarLive.step?.done);
+
+  const runsText = result ? result.bfs.timedRuns.toLocaleString('en-US') : 'many';
+
   const comparisonData: ComparisonItem[] = [
     {
       label: 'Path Cost',
+      hint: 'Total road distance of the route found.',
+      better: lowerWins(bfsFinal?.pathCost, astarFinal?.pathCost, bothFinished),
       bfs: String(bfsLive.step?.pathCost ?? 0),
       astar: String(astarLive.step?.pathCost ?? 0),
       bfsFinal: String(bfsFinal?.pathCost ?? 0),
       astarFinal: String(astarFinal?.pathCost ?? 0),
     },
     {
-      label: 'Node Explore',
+      label: 'Nodes Expanded',
+      hint: 'Cities taken off the frontier. A* also expands the goal.',
+      better: lowerWins(bfsFinal?.nodesExplored, astarFinal?.nodesExplored, bothFinished),
       bfs: String(bfsLive.step?.nodesExplored ?? 0),
       astar: String(astarLive.step?.nodesExplored ?? 0),
       bfsFinal: String(bfsFinal?.nodesExplored ?? 0),
@@ -197,18 +225,31 @@ export function SearchAnimationProvider({ start, goal, children }: ProviderProps
     // columns are the same value — they come straight off the backend's
     // response envelope instead of being hardcoded like they used to be.
     {
-      label: 'Memory Usage',
+      label: 'Peak Nodes Stored',
+      hint: 'Most cities held in memory at once.',
+      better: lowerWins(result?.bfs.peakNodesStored, result?.astar.peakNodesStored),
+      bfs: String(result?.bfs.peakNodesStored ?? 0),
+      astar: String(result?.astar.peakNodesStored ?? 0),
+      bfsFinal: String(result?.bfs.peakNodesStored ?? 0),
+      astarFinal: String(result?.astar.peakNodesStored ?? 0),
+    },
+    {
+      label: 'Memory Allocated',
+      hint: 'JVM memory one search allocates. Same every run.',
+      better: lowerWins(result?.bfs.memoryUsageKb, result?.astar.memoryUsageKb),
       bfs: formatKb(result?.bfs.memoryUsageKb),
       astar: formatKb(result?.astar.memoryUsageKb),
       bfsFinal: formatKb(result?.bfs.memoryUsageKb),
       astarFinal: formatKb(result?.astar.memoryUsageKb),
     },
     {
-      label: 'Execution Time',
-      bfs: formatMs(result?.bfs.executionTimeMs),
-      astar: formatMs(result?.astar.executionTimeMs),
-      bfsFinal: formatMs(result?.bfs.executionTimeMs),
-      astarFinal: formatMs(result?.astar.executionTimeMs),
+      label: 'Search Time',
+      hint: `Timer runs from start/goal given to path returned. Median of ${runsText} runs; gaps under ~0.3 µs are a tie.`,
+      better: lowerWins(result?.bfs.executionTimeMs, result?.astar.executionTimeMs),
+      bfs: formatUs(result?.bfs.executionTimeMs),
+      astar: formatUs(result?.astar.executionTimeMs),
+      bfsFinal: formatUs(result?.bfs.executionTimeMs),
+      astarFinal: formatUs(result?.astar.executionTimeMs),
     },
   ];
 
@@ -232,6 +273,7 @@ export function SearchAnimationProvider({ start, goal, children }: ProviderProps
         resetBoth,
         status,
         error,
+        heuristicPrecomputeMs: result?.astar.heuristicPrecomputeMs,
       }}
     >
       {children}
@@ -247,13 +289,16 @@ export function LiveComparisonRows() {
       {comparisonData.map((item) => (
         <div
           key={item.label}
-          className="grid grid-cols-3 items-center border-b border-cyan-500/10 py-3 text-[11px] last:border-b-0"
+          className="grid grid-cols-3 items-center border-b border-cyan-500/10 py-3 text-[11px]"
         >
           <p className="font-semibold text-[#e2f8ff]">{item.label}</p>
-          <p className="text-center font-bold text-[#67e8f9]">{item.bfs}</p>
-          <p className="text-center font-bold text-[#22d3ee]">{item.astar}</p>
+          <p className={`text-center font-bold ${item.better === 'bfs' ? BETTER_TEXT : 'text-[#67e8f9]'}`}>{item.bfs}</p>
+          <p className={`text-center font-bold ${item.better === 'astar' ? BETTER_TEXT : 'text-[#22d3ee]'}`}>{item.astar}</p>
         </div>
       ))}
+      <p className="pt-3 text-center text-[9px] text-[#5b7a94]">
+        Lower is better on every row · <span className={BETTER_TEXT}>green</span> = better
+      </p>
     </>
   );
 }
@@ -273,6 +318,24 @@ function LegendRow({ icons, label, description }: LegendRowProps) {
         <p className="text-[10px] font-semibold text-[#e2f8ff]">{label}</p>
         <p className="text-[9px] text-[#5b7a94]">{description}</p>
       </div>
+    </div>
+  );
+}
+
+// Says exactly what the performance numbers measure, so the comparison can be
+// read honestly: same method for both algorithms, and what is left out.
+export function MeasurementNote() {
+  const { heuristicPrecomputeMs } = useSearchAnimation();
+  const precompute = heuristicPrecomputeMs === undefined ? '' : ` (${heuristicPrecomputeMs.toFixed(1)} ms)`;
+
+  return (
+    <div className="flex flex-col gap-1 text-[9px] leading-relaxed text-[#5b7a94]">
+      <p>Lower is better on every measure.</p>
+      <p>Path cost and nodes expanded follow the animation.</p>
+      <p>
+        Measured on the server, search only. Not measured: animation, network, A*&apos;s one-off heuristic
+        setup{precompute}.
+      </p>
     </div>
   );
 }
@@ -433,20 +496,15 @@ export function LivePerformanceRows() {
         const astarValue = Number.parseFloat(item.astar);
         const bfsFinalValue = Number.parseFloat(item.bfsFinal);
         const astarFinalValue = Number.parseFloat(item.astarFinal);
-        const scaleMax = Math.max(
-          bfsValue,
-          astarValue,
-          bfsFinalValue,
-          astarFinalValue,
-          1,
-        );
+        // No fixed floor of 1: µs and KB values can be below 1. `|| 1` only guards all-zero rows.
+        const scaleMax = Math.max(bfsValue, astarValue, bfsFinalValue, astarFinalValue) || 1;
 
         return (
           <section key={item.label}>
-            <h3 className="mb-2 text-[11px] font-bold text-[#a5f3fc]">
-              {item.label}
-              {item.label === 'Execution Time' ? ' (ms)' : ''}
-            </h3>
+            <div className="mb-2">
+              <h3 className="text-[11px] font-bold text-[#a5f3fc]">{item.label}</h3>
+              <p className="text-[9px] text-[#5b7a94]">{item.hint}</p>
+            </div>
 
             <div className="mb-2 flex items-center gap-2 text-[10px]">
               <span className="w-7 text-[#7dd3fc]">BFS</span>
@@ -458,7 +516,7 @@ export function LivePerformanceRows() {
                   }}
                 />
               </div>
-              <span className="w-14 font-semibold text-[#7dd3fc]">
+              <span className="w-16 whitespace-nowrap font-semibold text-[#7dd3fc]">
                 {item.bfs}
               </span>
             </div>
@@ -473,7 +531,7 @@ export function LivePerformanceRows() {
                   }}
                 />
               </div>
-              <span className="w-14 font-semibold text-[#7dd3fc]">
+              <span className="w-16 whitespace-nowrap font-semibold text-[#7dd3fc]">
                 {item.astar}
               </span>
             </div>

@@ -14,12 +14,11 @@ export const MAP_IMAGE_HEIGHT = 1024;
 export type MapBox = { left: number; top: number; width: number; height: number };
 export type Rect = { left: number; top: number; right: number; bottom: number };
 
-// Optional placement: `center` is where the photo's middle goes (default: the
-// box's middle); `fit: 'contain'` keeps the whole photo inside the box instead
-// of filling it.
-export type MapBoxOptions = { center?: { x: number; y: number }; fit?: 'cover' | 'contain' };
+// Optional placement: `fit: 'contain'` keeps the whole photo inside the box
+// instead of filling it.
+export type MapBoxOptions = { fit?: 'cover' | 'contain' };
 
-// Behaves like `object-fit: cover` (fills the box around `center`), except it
+// Behaves like `object-fit: cover` (fills the box, centered), except it
 // shrinks the photo whenever cover would push a city outside `safe` — the
 // part of the box where nodes are actually visible (in box coordinates). So a
 // short, wide card or a small window still shows every node. `pad` is the
@@ -33,15 +32,11 @@ export function computeMapBox(
   pad: Rect,
   options: MapBoxOptions = {},
 ): MapBox {
-  const centerX = options.center?.x ?? boxWidth / 2;
-  const centerY = options.center?.y ?? boxHeight / 2;
-  // Cover from an off-centre point needs the photo to reach the farther edge on each axis.
+  const centerX = boxWidth / 2;
+  const centerY = boxHeight / 2;
   let scale = options.fit === 'contain'
     ? Math.min(boxWidth / MAP_IMAGE_WIDTH, boxHeight / MAP_IMAGE_HEIGHT)
-    : Math.max(
-        (2 * Math.max(centerX, boxWidth - centerX)) / MAP_IMAGE_WIDTH,
-        (2 * Math.max(centerY, boxHeight - centerY)) / MAP_IMAGE_HEIGHT,
-      );
+    : Math.max(boxWidth / MAP_IMAGE_WIDTH, boxHeight / MAP_IMAGE_HEIGHT);
 
   for (const city of cities) {
     // Offset from the photo's center, in photo pixels.

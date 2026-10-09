@@ -62,12 +62,8 @@ function computePageMapPlacement(pageRect: DOMRect, graphRect: DOMRect, pad: typ
   };
 
   if (window.matchMedia(SIDE_BY_SIDE_QUERY).matches) {
-    // The photo fills the page, centred on the graph area rather than the
-    // window — otherwise the picker on the right pushes the cities off-centre
-    // and narrower windows shrink the map to fit.
-    const box = computeMapBox(pageRect.width, pageRect.height, initialNodes, graph, pad, {
-      center: { x: (graph.left + graph.right) / 2, y: (graph.top + graph.bottom) / 2 },
-    });
+    // The photo fills the page, centred on the window.
+    const box = computeMapBox(pageRect.width, pageRect.height, initialNodes, graph, pad);
     return { box, fade: mapEdgeFadeStyle(box, pageRect) };
   }
 

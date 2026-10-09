@@ -7,8 +7,9 @@ type BackendRun = {
   totalNodes: number;
   distance: number;
   path: string[];
-  runtime: number;
-  memoryUsageKb: number;
+  nodesExpanded: number;
+  nodesGenerated: number;
+  peakNodesStored: number;
 };
 
 export type BfsResponse = BackendRun & {
@@ -18,7 +19,21 @@ export type BfsResponse = BackendRun & {
 
 export type AStarResponse = BackendRun & {
   routes: Record<string, AStarNode[]>;
+  heuristicPrecomputeMs: number;
 };
+
+type BackendMeasurement = {
+  runtime: number;
+  memoryUsageKb: number;
+  timedRuns: number;
+};
+
+export type CompareResponse = {
+  bfs: BackendMeasurement;
+  astar: BackendMeasurement;
+};
+
+type MeasuredFields = 'executionTimeMs' | 'memoryUsageKb' | 'timedRuns';
 
 const UNEXPECTED_RESPONSE = 'The search backend returned an unexpected response.';
 
@@ -61,13 +76,13 @@ function makeStep(
   };
 }
 
-function syntheticStep(start: string): SearchTraceStep {
-  return makeStep(start, [], [start], [start], [start], 0, true);
+function syntheticStep(start: string, nodesExplored: number): SearchTraceStep {
+  return { ...makeStep(start, [], [start], [start], [start], 0, true), nodesExplored };
 }
 
 function bfsSteps(res: BfsResponse, start: string, goal: string): SearchTraceStep[] {
   const { expanded, routes } = res;
-  if (expanded.length === 0) return [syntheticStep(start)];
+  if (expanded.length === 0) return [syntheticStep(start, 0)];
 
   const parent = new Map<string, string>();
   expanded.forEach((city, k) => {
@@ -108,7 +123,7 @@ function bfsSteps(res: BfsResponse, start: string, goal: string): SearchTraceSte
 function aStarSteps(res: AStarResponse, start: string): SearchTraceStep[] {
   const routes = res.routes;
   const count = Object.keys(routes).length;
-  if (count === 0) return [syntheticStep(start)];
+  if (count === 0) return [syntheticStep(start, 1)];
 
   const parentStep = new Map<number, number>();
   for (let j = 0; j < count; j++) {
@@ -128,10 +143,8 @@ function aStarSteps(res: AStarResponse, start: string): SearchTraceStep[] {
   const explored = new Set<string>();
   const steps: SearchTraceStep[] = [];
 
-  // A*'s last list is the goal being popped again, which BFS never does with its goal — see the
-  // note in bfsSteps. Dropping it puts both counts on one scale: cities expanded, goal excluded.
   const goal = res.path[res.path.length - 1];
-  const last = count > 1 ? count - 2 : count - 1;
+  const last = count - 1;
 
   for (let k = 0; k <= last; k++) {
     const current = routes[k][0];
@@ -163,26 +176,48 @@ function aStarSteps(res: AStarResponse, start: string): SearchTraceStep[] {
   return steps;
 }
 
-export function mapBfsResponse(res: BfsResponse, start: string, goal: string): AlgorithmResult {
+function counters(res: BackendRun) {
+  return {
+    nodesExpanded: res.nodesExpanded,
+    nodesGenerated: res.nodesGenerated,
+    peakNodesStored: res.peakNodesStored,
+  };
+}
+
+export function mapBfsResponse(res: BfsResponse, start: string, goal: string): Omit<AlgorithmResult, MeasuredFields> {
   if (!res || !res.routes || !Array.isArray(res.expanded) || !Array.isArray(res.path)) {
     throw new Error(UNEXPECTED_RESPONSE);
   }
   return {
     steps: bfsSteps(res, start, goal),
-    executionTimeMs: res.runtime,
-    memoryUsageKb: res.memoryUsageKb,
+    ...counters(res),
   };
 }
 
-export function mapAStarResponse(res: AStarResponse, start: string): AlgorithmResult {
+export function mapAStarResponse(res: AStarResponse, start: string): Omit<AlgorithmResult, MeasuredFields> {
   if (!res || !res.routes || !Array.isArray(res.path)) {
     throw new Error(UNEXPECTED_RESPONSE);
   }
   return {
     steps: aStarSteps(res, start),
-    executionTimeMs: res.runtime,
-    memoryUsageKb: res.memoryUsageKb,
+    ...counters(res),
+    heuristicPrecomputeMs: res.heuristicPrecomputeMs,
   };
+}
+
+function measurement(cost: BackendMeasurement): Pick<AlgorithmResult, MeasuredFields> {
+  return {
+    executionTimeMs: cost.runtime,
+    memoryUsageKb: cost.memoryUsageKb,
+    timedRuns: cost.timedRuns,
+  };
+}
+
+export function mapCompareResponse(res: CompareResponse) {
+  if (!res || !res.bfs || !res.astar) {
+    throw new Error(UNEXPECTED_RESPONSE);
+  }
+  return { bfs: measurement(res.bfs), astar: measurement(res.astar) };
 }
 
 export function describeFailure(status: number, body: unknown): string {

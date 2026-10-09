@@ -1,11 +1,3 @@
-// Shared 16-bit/32-bit pixel-art + futuristic-networking theme used by the
-// city picker map (app/page.tsx) and the search animation map (RomaniaMap.tsx).
-//
-// Devices are drawn as tiny hand-built pixel glyphs (crisp rects on a 16x16
-// grid, no anti-aliasing) and shipped to vis-network as `shape: 'image'` data
-// URIs with `shapeProperties.interpolation: false` so they stay chunky when
-// scaled up instead of getting smoothed into a blur.
-
 import { Press_Start_2P } from 'next/font/google';
 
 export const pixelFont = Press_Start_2P({ weight: '400', subsets: ['latin'] });
@@ -40,11 +32,6 @@ const GLOW_DEFS = `
     <feGaussianBlur stdDeviation="2.6" />
   </filter>`;
 
-// Icons sitting on a photo background stay readable via a colored glow behind
-// them (no flat dark box) — a blurred blob in the tone's own glow color
-// (pushed brighter/bigger so it stands out whatever the color is), plus a
-// tight dark rim right at the glyph edge for separation against light cloud
-// patches.
 function haloGlow(c: TonePalette): string {
   return `
     <ellipse cx="8" cy="8" rx="7.6" ry="7.6" fill="${c.glow}" opacity="0.8" filter="url(#halo)" />

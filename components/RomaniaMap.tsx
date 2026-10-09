@@ -23,33 +23,17 @@ type RomaniaMapProps = {
   start?: string;
   goal?: string;
   step?: SearchTraceStep;
-  // Extra manual multiplier on top of the automatic container-based scaling
-  // below (see computeSizeMetrics) — use it to nudge one particular instance
-  // smaller/larger without touching the base tuning. Defaults to 1 (no-op).
   scale?: number;
 };
 
-// ─── Animation timing ────────────────────────────────────────────────────
-// All comfortably inside the default 800ms step cadence, so one step's
-// effects resolve before the next begins and the screen never accumulates
-// overlapping leftovers.
-const PROBE_DURATION_MS = 420; // one probe crossing one cable
-const PROBE_TAIL_FRACTION = 0.34; // tail length as a fraction of the cable
-const TRANSMIT_RING_MS = 460; // bloom on the router that transmitted
-const ARRIVE_RING_MS = 340; // snap-in on a router a probe reached
-const ARRIVE_RING_DELAY_MS = PROBE_DURATION_MS * 0.86; // fires as the probe lands
-const DELIVERY_STREAM_MS = 26; // ms per px of dash travel on the final route
-const EFFECT_GC_MS = 1200; // drop spent effects after this long
+const PROBE_DURATION_MS = 420;
+const PROBE_TAIL_FRACTION = 0.34;
+const TRANSMIT_RING_MS = 460;
+const ARRIVE_RING_MS = 340;
+const ARRIVE_RING_DELAY_MS = PROBE_DURATION_MS * 0.86;
+const DELIVERY_STREAM_MS = 26;
+const EFFECT_GC_MS = 1200;
 
-// --- Proportional sizing -----------------------------------------------
-// Icon/label/edge sizes are NOT fixed pixel constants — they're computed
-// every time this map's container is (re)measured, as a fraction of the
-// width the map photo is drawn at (see computeMapBoxForPanel). BASE_* below are the sizes that looked right on
-// the full-viewport city-picker map (app/page.tsx), tuned against
-// REFERENCE_WIDTH; a smaller card (like the BFS/A* panels on page2) gets a
-// proportionally smaller — but never illegibly small, thanks to the floors
-// in computeSizeMetrics — version of the same map instead of the exact same
-// pixel sizes squeezed into less space.
 const REFERENCE_WIDTH = 1536;
 const MIN_AUTO_SCALE = 0.28;
 const MAX_AUTO_SCALE = 1;
@@ -121,8 +105,6 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-// Scales with how wide the map is drawn, so icons and labels keep the same
-// size relative to the map artwork whatever shape the panel is.
 function computeSizeMetrics(mapWidth: number, manualScale: number): SizeMetrics {
   const autoScale = clamp(mapWidth / REFERENCE_WIDTH, MIN_AUTO_SCALE, MAX_AUTO_SCALE);
   const s = autoScale * (Number.isFinite(manualScale) && manualScale > 0 ? manualScale : 1);
@@ -147,10 +129,6 @@ function computeSizeMetrics(mapWidth: number, manualScale: number): SizeMetrics 
   };
 }
 
-// Room to keep around the outermost cities so their icon and label stay
-// inside the panel. Labels use a pixel font, so a glyph is ~1em wide and the
-// longest edge label ("Timisoara") needs about 5em either side of its node;
-// above a node there's only half an icon, below it the icon and the label.
 function computeMapBoxForPanel(width: number, height: number, metrics: SizeMetrics) {
   const side = metrics.labelFontSize * 5 + metrics.labelPillPadX;
   const pad = {
@@ -166,12 +144,7 @@ function iconSizeForRole(role: DeviceRole, metrics: SizeMetrics) {
   return role === 'router' ? metrics.routerIconSize : metrics.deviceIconSize;
 }
 
-// vis-network's 'image' node shape throws synchronously inside `new Network(...)`
-// if a node is created without an `image` (Error: "Option image must be defined
-// for node type 'image'"), which aborts the whole network before anything can
-// render. So every node — including the very first DataSet we hand to the
-// constructor — must already carry a resolved icon; this is shared by both the
-// initial creation and every later per-step update.
+// vis-network throws if an 'image' node has no image, so every node needs its icon up front.
 function computeNodeStates(
   start: string | undefined,
   goal: string | undefined,
@@ -202,13 +175,6 @@ function computeNodeStates(
   });
 }
 
-// Draws every city name by hand (dark solid outline + soft shadow baked into
-// the same stroke pass, topped with a crisp light cyan-white fill, over a
-// small rounded dark chip) instead of relying on vis-network's built-in label
-// renderer, which only supports one flat text-stroke. Idle router names dim
-// to a muted tone so a node currently on the frontier/explored/path/PC/server
-// reads as the standout text on the map. All sizing comes from `metrics` so
-// it scales with the container instead of staying fixed.
 function drawCityLabels(
   ctx: CanvasRenderingContext2D,
   positions: Map<string, { x: number; y: number }>,
@@ -261,18 +227,7 @@ function drawCityLabels(
   ctx.restore();
 }
 
-// ─── Propagation effects ─────────────────────────────────────────────────
-//
-// The animation models what a router mesh actually does: a router that gets
-// examined TRANSMITS down every cable it owns, and the routers on the far
-// end light up as those probes land. Nothing travels across the map as a
-// single object, so nothing can ever appear to teleport — a probe's entire
-// existence is one cable, and several fire at once, which is what makes a
-// breadth-first sweep look like a broadcast instead of a wandering dot.
-
-/** One probe in flight along a single cable. */
 type Probe = { fromId: string; toId: string; startedAt: number };
-/** A ring drawn on a router: it either transmitted, or a probe just landed. */
 type Flash = { nodeId: string; startedAt: number; kind: 'transmit' | 'arrive' };
 type Point = { x: number; y: number };
 
@@ -280,14 +235,6 @@ function lerpPoint(from: Point, to: Point, t: number): Point {
   return { x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t };
 }
 
-/**
- * Probes: a bright head with a gradient tail streaking down the cable.
- *
- * Every probe runs for the same duration regardless of how long its cable
- * is, so a whole fan of them launched together also lands together — that
- * synchronisation is what sells "one hop outward" as a single beat of the
- * search rather than a scatter of unrelated movement.
- */
 function drawProbes(
   ctx: CanvasRenderingContext2D,
   probes: Probe[],
@@ -306,12 +253,9 @@ function drawProbes(
     const to = positions.get(probe.toId);
     if (!from || !to) continue;
 
-    // Decelerate into the far router so the arrival reads as an impact.
     const eased = 1 - (1 - t) ** 3;
     const head = lerpPoint(from, to, eased);
     const tail = lerpPoint(from, to, Math.max(0, eased - PROBE_TAIL_FRACTION));
-    // Fade the last sliver of the flight so the probe dissolves into the
-    // arrival ring instead of stopping dead.
     const fade = t > 0.82 ? Math.max(0, (1 - t) / 0.18) : 1;
 
     const gradient = ctx.createLinearGradient(tail.x, tail.y, head.x, head.y);
@@ -332,11 +276,6 @@ function drawProbes(
   ctx.restore();
 }
 
-/**
- * Rings on routers. `transmit` blooms outward from the router doing the
- * sending; `arrive` snaps inward as a probe lands, so the two read as cause
- * and effect rather than as the same generic sparkle.
- */
 function drawFlashes(
   ctx: CanvasRenderingContext2D,
   flashes: Flash[],
@@ -358,8 +297,8 @@ function drawFlashes(
     const base = metrics.deviceIconSize * 0.5;
     const radius =
       flash.kind === 'transmit'
-        ? base * (0.75 + t * 1.6) // bloom outward
-        : base * (1.85 - t * 0.95); // snap inward
+        ? base * (0.75 + t * 1.6)
+        : base * (1.85 - t * 0.95);
 
     ctx.beginPath();
     ctx.arc(pos.x, pos.y, Math.max(1, radius), 0, Math.PI * 2);
@@ -376,12 +315,6 @@ function drawFlashes(
   ctx.restore();
 }
 
-/**
- * The payoff shot: once the goal is reached, the confirmed route carries a
- * continuous stream of traffic from PC to server. Deliberately the ONLY
- * continuously-moving thing on screen, so "delivered" looks different in
- * kind from "still searching", not just brighter.
- */
 function drawDeliveryStream(
   ctx: CanvasRenderingContext2D,
   path: string[],
@@ -403,8 +336,6 @@ function drawDeliveryStream(
     if (!from || !to) continue;
 
     ctx.setLineDash([dash, gap]);
-    // Negative offset so the dashes travel PC → server, i.e. the direction
-    // the data is actually going.
     ctx.lineDashOffset = -((now / DELIVERY_STREAM_MS) * (dash + gap)) % (dash + gap);
     ctx.strokeStyle = 'rgba(236,254,255,0.95)';
     ctx.shadowColor = 'rgba(34,211,238,0.95)';
@@ -421,8 +352,6 @@ function drawDeliveryStream(
 
 export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  // Where the photo is drawn inside the panel — null until measured, when it
-  // falls back to plain object-fit: cover.
   const [mapBox, setMapBox] = useState<MapBox | null>(null);
   const networkRef = useRef<Network | null>(null);
   const nodesDataSetRef = useRef<DataSet<VisNode> | null>(null);
@@ -430,20 +359,10 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
   const pathIdsRef = useRef<Set<number>>(new Set());
   const routeKeyRef = useRef<string>('');
   const prevCurrentRef = useRef<string | null>(null);
-  // Live propagation effects, appended by applyState() and drawn (then
-  // garbage-collected) every frame by the afterDrawing hook.
   const probesRef = useRef<Probe[]>([]);
   const flashesRef = useRef<Flash[]>([]);
-  // Which routers the search had already reached as of the previous step —
-  // diffed against the new step to find what was just discovered, and hence
-  // which cables should light up.
   const knownNodesRef = useRef<Set<string>>(new Set());
-  // The confirmed PC → server route, set once the search completes.
   const deliveredPathRef = useRef<string[]>([]);
-  // Latest on-screen pixel position / tone / role per city, kept in sync by
-  // applyLayout()/applyState() and read every frame by drawCityLabels(), and
-  // the latest computed size metrics — also read fresh every frame, so a
-  // resize is reflected immediately without waiting on a prop change.
   const nodePixelPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
   const nodeToneRef = useRef<Map<string, DeviceTone>>(new Map());
   const nodeRoleRef = useRef<Map<string, DeviceRole>>(new Map());
@@ -453,9 +372,6 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
     scaleRef.current = scale;
   }, [scale]);
 
-  // Create the network once, then only push incremental DataSet updates.
-  // (Recreating vis-network on every step, as before, would also throw away
-  // the packet node's position and make hop animation impossible.)
   useEffect(() => {
     let disposed = false;
     let resizeHandler: (() => void) | null = null;
@@ -468,12 +384,10 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
       try {
         await document.fonts?.ready;
       } catch {
-        /* pixel font not ready yet — labels fall back gracefully */
+        /* pixel font not ready yet */
       }
       if (disposed || !containerRef.current) return;
 
-      // Measure once up front so the very first paint already uses
-      // container-appropriate sizes instead of flashing full-size icons.
       const initialRect = containerRef.current.getBoundingClientRect();
       metricsRef.current = computeSizeMetrics(initialRect.width || REFERENCE_WIDTH, scaleRef.current);
 
@@ -481,13 +395,7 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
       nodeToneRef.current = new Map(initialNodeStates.map((n) => [n.id, n.tone]));
       nodeRoleRef.current = new Map(initialNodeStates.map((n) => [n.id, n.role]));
 
-      // Only the real cities are graph nodes. Packets used to be a hidden
-      // dummy node shuffled around with moveNode(); they're pure canvas
-      // effects now, which is what lets several exist at once.
       nodesDataSetRef.current = new DataSet(
-        // x/y are placeholders — applyLayout() overwrites them with real
-        // pixel positions (derived from xPct/yPct) right after the network
-        // mounts, once the container's actual size is known.
         initialNodeStates.map(({ tone: _tone, role: _role, ...node }) => ({ ...node, x: 0, y: 0 })),
       );
 
@@ -506,13 +414,10 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
         {
           physics: false,
           autoResize: true,
-          // Fixed reference map — panning/zooming/node-dragging are disabled
-          // so the layout can't get knocked out of place while watching a run.
           interaction: { hover: true, dragView: false, zoomView: false, dragNodes: false, selectable: false },
           nodes: {
             shape: 'image',
             shapeProperties: { interpolation: false },
-            // No node font here — city names are hand-drawn (see drawCityLabels).
           },
           edges: {
             smooth: false,
@@ -528,12 +433,6 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
         },
       );
 
-      // Pin the view 1:1 to real screen pixels instead of vis-network's
-      // auto-fit zoom, and (re)compute the proportional size metrics from
-      // the container's current width. Runs on mount and on every resize —
-      // it only touches things that don't depend on start/goal/step (which
-      // could otherwise go stale in this closure), so per-step state is
-      // refreshed separately by applyState().
       const applyLayout = () => {
         if (!containerRef.current || !networkRef.current) return;
         const nodesDataSet = nodesDataSetRef.current;
@@ -541,9 +440,6 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
         const rect = containerRef.current.getBoundingClientRect();
         if (rect.width === 0 || rect.height === 0) return;
 
-        // Padding depends on label size and label size on the map's drawn
-        // width, so size the box from the panel's metrics first, then take
-        // the final metrics from the map that actually got drawn.
         const box = computeMapBoxForPanel(rect.width, rect.height, computeSizeMetrics(rect.width, scaleRef.current));
         setMapBox((prev) => (sameMapBox(prev, box) ? prev : box));
         const metrics = computeSizeMetrics(box.width, scaleRef.current);
@@ -578,24 +474,13 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
       };
 
       applyLayout();
-      // One more pass on the next frame — a defensive safety net in case the
-      // very first getBoundingClientRect() above landed a frame before the
-      // flex layout (header + two equal-height cards) finished settling,
-      // which would otherwise leave the map sized to a too-small rect until
-      // the next resize/observer event.
       requestAnimationFrame(applyLayout);
 
       resizeHandler = applyLayout;
       window.addEventListener('resize', resizeHandler);
-      // The panel can also resize from layout reflow alone (no window
-      // resize event), so watch its own box too.
       resizeObserver = new ResizeObserver(applyLayout);
       resizeObserver.observe(containerRef.current);
 
-      // Everything above vis-network's own node/edge pass is hand-drawn
-      // here, in deliberate depth order: delivery stream (lowest, it's a
-      // steady background state) → probes → router rings → city names on
-      // top, so text never gets washed out by an effect passing under it.
       networkRef.current.on('afterDrawing', (ctx: CanvasRenderingContext2D) => {
         if (!networkRef.current) return;
         const time = performance.now();
@@ -651,11 +536,6 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
         }),
       );
 
-      // ── Emit this step's propagation ──────────────────────────────────
-      // The router being expanded transmits down each cable that leads
-      // somewhere the search hadn't reached before; those cables carry a
-      // probe, and each far end flashes as its probe lands. Each probe
-      // crosses exactly one cable, so nothing can ever cut across the map.
       const known = new Set<string>([...(step?.explored ?? []), ...(step?.frontier ?? [])]);
       const advancedOneStep = current !== null && current !== prevCurrentRef.current;
 
@@ -681,15 +561,10 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
             });
           }
         } else {
-          // A dead end, or the goal itself: the router still answers, it
-          // just has nothing new to forward to.
           flashesRef.current.push({ nodeId: current, startedAt: now, kind: 'arrive' });
         }
       }
 
-      // Scrubbing backwards (or jumping) shrinks the known set — drop any
-      // effects mid-flight so the map snaps cleanly to the scrubbed-to state
-      // instead of finishing animations for a step that's no longer showing.
       if (known.size < knownNodesRef.current.size) {
         probesRef.current = [];
         flashesRef.current = [];
@@ -711,10 +586,6 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
     };
   }, [start, goal, step]);
 
-  // Every effect is drawn in the afterDrawing hook, so this loop is the
-  // animation's clock. It runs at full frame rate while anything is moving —
-  // probes and rings need it to look smooth — and idles at ~12fps when the
-  // map is static, rather than burning a redraw every frame on a still image.
   useEffect(() => {
     let rafId = 0;
     let lastTime = 0;
@@ -747,8 +618,6 @@ export default function RomaniaMap({ start, goal, step, scale = 1 }: RomaniaMapP
     <div
       className={`relative h-full w-full overflow-hidden rounded-xl border border-cyan-500/30 bg-[#060a13] shadow-[0_0_25px_rgba(34,211,238,0.15)] ${pixelFont.className}`}
     >
-      {/* Same background photo as the city-picker map, placed inside this
-          panel by the same box the nodes use — see applyLayout() above. */}
       <div
         className="pointer-events-none absolute"
         style={{

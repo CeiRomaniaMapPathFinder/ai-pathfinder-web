@@ -1,6 +1,3 @@
-// xGT = e^(−γ·h), drawn: chance to score on the vertical axis, h along the
-// bottom. Every city of the selected goal's table sits on the curve.
-
 import { XGT_PARAMS } from '../../../lib/xgtHeuristic';
 import { MONO, ROLE, TERM, pct } from '../shared';
 import { snap } from './geometry';
@@ -32,7 +29,6 @@ export default function ChanceCurve({
 
   return (
     <svg viewBox="0 0 100 60" className="w-full" role="img" aria-label="Curve turning a city's chance into its h">
-      {/* Axes. */}
       <line
         x1={BOX.left}
         y1={BOX.bottom}
@@ -78,7 +74,6 @@ export default function ChanceCurve({
 
       <path d={curve} fill="none" stroke="rgba(251,191,36,0.55)" strokeWidth={0.5} />
 
-      {/* Read-off guides for the start city: across from its chance, down to its h. */}
       {startPoint && (
         <g stroke={ROLE.start} strokeWidth={0.3} strokeDasharray="1 0.8" opacity={0.8}>
           <line x1={BOX.left} y1={startPoint.y} x2={startPoint.x} y2={startPoint.y} />

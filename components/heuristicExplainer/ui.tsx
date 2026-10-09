@@ -1,16 +1,8 @@
-// Building blocks for the explainer: chapter frame, formula block, cards,
-// callouts and the coloured symbols used inside running text.
-
 import type { ReactNode } from 'react';
 import { TbAlertTriangle, TbArrowUp, TbBulb, TbInfoCircle } from 'react-icons/tb';
 import { GLASS_CARD } from '../../lib/uiTheme';
 import { GLOW, MONO, PIXEL, ROLE, TERM, type TermKey } from './shared';
 
-/**
- * The rule between chapters: bright at the chapter number, fading to the
- * right, with a blurred copy underneath as its glow (a box-shadow would glow
- * evenly along the faded end too) and a lit node where it starts.
- */
 export function GlowDivider() {
   const line = 'absolute inset-x-0 top-0 bg-gradient-to-r from-cyan-300 via-cyan-400/50 to-transparent';
   return (
@@ -32,7 +24,6 @@ export function Chapter({
 }: {
   index: number;
   id: string;
-  /** Small label above the title, e.g. "Ingredient 1". */
   kicker?: string;
   title: string;
   lead?: ReactNode;
@@ -58,7 +49,6 @@ export function Chapter({
   );
 }
 
-/** Running text column. */
 export function Prose({ children, className = '' }: { children: ReactNode; className?: string }) {
   return <div className={`flex max-w-[64ch] flex-col gap-4 text-[15px] leading-[1.85] ${className}`}>{children}</div>;
 }
@@ -76,7 +66,6 @@ export function PanelTitle({ children, aside }: { children: ReactNode; aside?: R
   );
 }
 
-/** A coloured, monospaced symbol inside text: <T k="h">h</T>. */
 export function T({ k, children }: { k: TermKey; children: ReactNode }) {
   return (
     <span className="font-semibold whitespace-nowrap" style={{ ...MONO, color: TERM[k] }}>
@@ -85,7 +74,6 @@ export function T({ k, children }: { k: TermKey; children: ReactNode }) {
   );
 }
 
-/** Monospaced number or expression without a term colour. */
 export function M({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
     <span className={`whitespace-nowrap ${className}`} style={MONO}>
@@ -94,7 +82,6 @@ export function M({ children, className = '' }: { children: ReactNode; className
   );
 }
 
-/** A city name, marked when it is the start or the goal. */
 export function City({ name, start, goal }: { name: string; start?: string; goal?: string }) {
   const color = name === goal ? ROLE.goal : name === start ? ROLE.start : undefined;
   return (
@@ -104,10 +91,6 @@ export function City({ name, start, goal }: { name: string; start?: string; goal
   );
 }
 
-/**
- * A displayed equation: one line per child, monospaced, scrolling sideways
- * on narrow screens rather than wrapping mid-formula.
- */
 export function Eq({ children, caption }: { children: ReactNode; caption?: ReactNode }) {
   return (
     <figure className="flex min-w-0 flex-col gap-2">
@@ -190,7 +173,6 @@ export function Callout({
   );
 }
 
-/** Two-way switch used by the interactive panels. */
 export function Toggle<T extends string>({
   value,
   options,
@@ -232,8 +214,7 @@ export function Toggle<T extends string>({
 }
 
 export function BackToTree() {
-  // A plain anchor, and never id="top", which next/link resolves to
-  // document.body instead of this page's scroll container.
+  // Plain anchor, and never id="top": next/link resolves that to document.body.
   return (
     <a
       href="#search-tree"

@@ -1,18 +1,5 @@
 'use client';
 
-// The "how does this heuristic actually work" section that sits one screen
-// below the search tree on /page3. It teaches xGT-v2b from zero to the exact
-// h values in the tree, built one idea per chapter, and uses the route the
-// user picked for its examples.
-//
-// The numbers are recomputed in the browser by lib/xgtHeuristic.ts (pinned to
-// the backend's table by its test) because the explanation needs every
-// iteration round and every term of every sum, not just the final h.
-//
-// Body copy uses the app's Geist Sans (Press Start 2P is unreadable at
-// paragraph length); headings keep the pixel font so the section still reads
-// as part of the same product.
-
 import { useMemo } from 'react';
 import { TbArrowDown } from 'react-icons/tb';
 import { CITIES, computeXgt } from '../../lib/xgtHeuristic';
@@ -29,7 +16,6 @@ import ContentsRail, { ContentsChips } from './ContentsRail';
 import { GLOW, MONO, PIXEL, ROLE, TERM, pct, type ExplainerModel } from './shared';
 import { BackToTree, Card, GlowDivider } from './ui';
 
-/** Faint blueprint grid — the explainer's surface, distinct from the tree's flat black. */
 const GRID_SURFACE = {
   backgroundImage:
     'linear-gradient(rgba(34,211,238,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(34,211,238,0.04) 1px, transparent 1px)',
@@ -39,8 +25,6 @@ const GRID_SURFACE = {
 const FALLBACK = { start: 'Arad', goal: 'Bucharest' };
 
 export default function HeuristicExplainer({ start, goal }: { start: string; goal: string }) {
-  // An unknown city in the URL already shows as an error in the tree; the
-  // explanation falls back to the textbook route rather than breaking.
   const known = CITIES.includes(start) && CITIES.includes(goal);
   const route = known ? { start, goal } : FALLBACK;
   const result = useMemo(() => computeXgt(route.goal), [route.goal]);
@@ -52,12 +36,6 @@ export default function HeuristicExplainer({ start, goal }: { start: string; goa
       className="relative w-full shrink-0 border-t border-cyan-400/50 bg-[#0a1322] text-[#cbe7f5]"
       style={GRID_SURFACE}
     >
-      {/* The seam: a glowing edge, light spilling down onto the new surface,
-          and a tab hanging from the line so the change of mode is explicit.
-          Everything here extends downward only — anything reaching above
-          the line pokes into the tree's first screen and covers the trace,
-          so the glow is a gradient strip below the line, not a box-shadow
-          (which blurs in every direction). */}
       <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-px h-px bg-cyan-300/80" />
       <div
         aria-hidden

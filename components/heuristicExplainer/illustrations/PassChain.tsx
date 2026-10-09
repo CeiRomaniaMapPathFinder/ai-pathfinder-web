@@ -1,7 +1,3 @@
-// Two passes in a row ending at the goal: the chances multiply, which is
-// the same as adding the road costs inside one exponent — the fact the
-// −ln step later relies on.
-
 import { XGT_PARAMS } from '../../../lib/xgtHeuristic';
 import { MONO, ROLE, TERM, pct } from '../shared';
 

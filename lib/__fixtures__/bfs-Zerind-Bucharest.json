@@ -20,7 +20,7 @@
       "Bucharest"
     ]
   },
-  "totalNodes": 8,
+  "totalNodes": 9,
   "distance": 525,
   "path": [
     "Zerind",
@@ -29,7 +29,6 @@
     "Fagaras",
     "Bucharest"
   ],
-  "runtime": 0.02925,
   "expanded": [
     "Zerind",
     "Arad",
@@ -38,5 +37,7 @@
     "Timisoara",
     "Fagaras"
   ],
-  "memoryUsageKb": 2.0546875
+  "nodesExpanded": 6,
+  "nodesGenerated": 14,
+  "peakNodesStored": 8
 }

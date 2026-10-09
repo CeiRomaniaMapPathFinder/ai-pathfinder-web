@@ -1,6 +1,3 @@
-// f = g + h as a picture: the road already driven (known) and the guess for
-// what is left (h), for one real city on the selected route.
-
 import { MONO, ROLE, TERM } from '../shared';
 
 export default function GuessDiagram({

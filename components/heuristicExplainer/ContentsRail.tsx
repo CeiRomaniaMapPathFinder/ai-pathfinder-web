@@ -30,11 +30,6 @@ export const CHAPTERS = [
 
 export type ChapterId = (typeof CHAPTERS)[number]['id'];
 
-/**
- * Which chapter is under the reading line (a thin band ~40% down the
- * viewport). The observer's implicit root is the viewport, which still works
- * though the page scrolls inside its own container rather than the document.
- */
 function useActiveChapter(): ChapterId {
   const [active, setActive] = useState<ChapterId>(CHAPTERS[0].id);
 
@@ -61,9 +56,6 @@ export default function ContentsRail() {
   const active = useActiveChapter();
 
   return (
-    // Sticky inside the page's own scroll container; self-start keeps the
-    // grid from stretching it to the full column height, which would leave
-    // it nothing to stick within.
     <nav aria-label="How it works — contents" className="sticky top-8 hidden self-start lg:block">
       <p className={`mb-4 text-[8px] tracking-widest text-[#5b7a94] ${PIXEL}`}>CONTENTS</p>
       <ol className="flex flex-col border-l border-cyan-500/15">
@@ -71,8 +63,7 @@ export default function ContentsRail() {
           const isActive = id === active;
           return (
             <li key={id}>
-              {/* Plain anchors: native hash scrolling follows this page's own
-                  scroll container, next/link's does not. */}
+              {/* Plain anchors: next/link doesn't scroll this page's own scroll container. */}
               <a
                 href={`#${id}`}
                 aria-current={isActive ? 'true' : undefined}
@@ -99,7 +90,6 @@ export default function ContentsRail() {
   );
 }
 
-/** Compact chapter links for narrow screens, where the rail is hidden. */
 export function ContentsChips() {
   return (
     <nav aria-label="How it works — contents" className="cyan-scrollbar -mx-4 overflow-x-auto px-4 pb-2 lg:hidden">

@@ -1,7 +1,3 @@
-// A football attack and the same situation read as roads between cities,
-// side by side. Numbered markers tie each part of the pitch to its meaning
-// on the map (the list next to it uses the same numbers).
-
 import { ROLE, TERM } from '../shared';
 
 const LINE = 'rgba(165,243,252,0.35)';
@@ -26,7 +22,6 @@ function Player({ x, y, carrier }: { x: number; y: number; carrier?: boolean }) 
   );
 }
 
-/** Left: the pitch. Right: the same shape as cities and roads. */
 export default function PitchAnalogy({ goal }: { goal: string }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -37,7 +32,6 @@ export default function PitchAnalogy({ goal }: { goal: string }) {
         aria-label="A football attack: a player with the ball and three passing options"
       >
         <rect x={2} y={2} width={96} height={60} rx={2} fill="rgba(16,185,129,0.06)" stroke={LINE} strokeWidth={0.5} />
-        {/* Mowing stripes. */}
         {[0, 1, 2, 3, 4, 5].map((i) => (
           <rect key={i} x={2 + i * 16} y={2} width={8} height={60} fill="rgba(52,211,153,0.03)" />
         ))}
@@ -45,10 +39,8 @@ export default function PitchAnalogy({ goal }: { goal: string }) {
         <circle cx={20} cy={32} r={8} fill="none" stroke={LINE} strokeWidth={0.4} />
         <rect x={80} y={16} width={18} height={32} fill="none" stroke={LINE} strokeWidth={0.4} />
         <rect x={91} y={25} width={7} height={14} fill="none" stroke={LINE} strokeWidth={0.4} />
-        {/* The goal mouth. */}
         <rect x={97.5} y={27} width={2.2} height={10} fill={ROLE.goal} opacity={0.85} />
 
-        {/* Passing lanes: short safe ones solid, a long risky one fading out. */}
         <line x1={36} y1={34} x2={55} y2={16} stroke={TERM.choice} strokeWidth={0.8} strokeDasharray="2 1.2" />
         <line x1={36} y1={34} x2={60} y2={50} stroke={TERM.choice} strokeWidth={0.8} strokeDasharray="2 1.2" />
         <line

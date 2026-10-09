@@ -1,7 +1,3 @@
-// The Zerind fork on its own: two ways to Sibiu (via Arad or via Oradea),
-// then one shared stretch on to Bucharest. The first road A* picks under the
-// selected pass-choice rule glows.
-
 import { MONO, ROLE } from '../shared';
 
 export type ForkSide = { first: number; second: number; f: number };
@@ -82,7 +78,6 @@ export default function ForkMap({ arad, oradea, rest }: { arad: ForkSide; oradea
   const chosen = arad.f <= oradea.f ? 'Arad' : 'Oradea';
   return (
     <svg viewBox="0 0 122 66" className="w-full select-none" role="img" aria-label="Two ways from Zerind to Sibiu">
-      {/* A* choosing at Zerind: the picked first road glows. */}
       <Road
         from={NODE.Zerind}
         to={chosen === 'Arad' ? NODE.Arad : NODE.Oradea}

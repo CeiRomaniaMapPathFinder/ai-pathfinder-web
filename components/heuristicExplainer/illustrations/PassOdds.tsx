@@ -1,6 +1,3 @@
-// Drag a road length and watch how many of 20 passes still arrive:
-// C = e^(−γw). Ticks mark the shortest and longest roads on the real map.
-
 import { useId, useState } from 'react';
 import { XGT_PARAMS } from '../../../lib/xgtHeuristic';
 import { MONO, TERM, pct } from '../shared';
@@ -9,7 +6,6 @@ import { Card, PanelTitle } from '../ui';
 const MIN_W = 20;
 const MAX_W = 260;
 const PASSES = 20;
-/** Shortest and longest roads on this map. */
 const MAP_EXTREMES = [
   { w: 70, label: 'shortest road (Lugoj–Mehadia)' },
   { w: 211, label: 'longest road (Fagaras–Bucharest)' },

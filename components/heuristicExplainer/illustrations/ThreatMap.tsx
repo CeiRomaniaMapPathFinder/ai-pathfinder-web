@@ -1,18 +1,12 @@
-// The Romania road network drawn as a schematic, each city coloured by its
-// xGT in one round of the iteration — so stepping through rounds shows the
-// goal's threat spreading outward one road at a time.
-
 import { routeEdges } from '../../../lib/routePath';
 import { hFromXgt, type XgtTable } from '../../../lib/xgtHeuristic';
 import { MONO, ROLE, pct } from '../shared';
 import { CITY_XY, THREAT_HIGH, THREAT_LOW, snap, threatColor, threatShade } from './geometry';
 
-// Crop of the photo that holds every city plus room for labels.
 const VIEW = { x: 5, y: 10, width: 84, height: 49 };
 
 type Side = 'above' | 'below' | 'left' | 'right';
 
-/** Label placement per city, chosen by hand so no two names collide. */
 const LABEL_SIDE: Record<string, Side> = {
   Timisoara: 'left',
   Arad: 'left',
@@ -29,11 +23,6 @@ const LABEL_SIDE: Record<string, Side> = {
   Eforie: 'right',
 };
 
-/**
- * Where a city's name (line 0) and, when shown, its value (line 1) go. Side
- * labels stack the value under the name; above/below labels put the value
- * on the other side of the dot.
- */
 function labelAt(x: number, y: number, side: Side, line: 0 | 1) {
   const middle = 'middle' as const;
   switch (side) {
@@ -61,7 +50,6 @@ function CityLabel({
   city: string;
   color: string;
   bold: boolean;
-  /** Shown only for the cities being followed; the rest read by colour and tooltip. */
   value?: string;
 }) {
   const side = LABEL_SIDE[city] ?? 'above';

@@ -15,21 +15,12 @@ import type {
   Node as VisNode,
 } from 'vis-network/standalone';
 
-// City positions are a percentage of the map photo (lib/cityPositions.ts);
-// computeNodePixelPositions() below turns them into pixels for wherever the
-// photo is drawn on this screen.
 const initialNodes = cityPositions;
 
 const cityNames = initialNodes.map((node) => node.id);
 
-// Room kept between the outermost cities and the graph area's edges (px):
-// half the widest edge label ("Timisoara") on the sides, half an icon above,
-// icon + label below.
 const MAP_PAD = { left: 60, right: 60, top: 16, bottom: 48 };
 
-// Icons, labels, edge numbers and MAP_PAD are sized for a desktop-width map.
-// A narrower graph area (phones) scales them down so all 20 cities still fit
-// without piling up, but never below MIN_SIZE_SCALE so names stay readable.
 const FULL_SIZE_GRAPH_WIDTH = 900;
 const MIN_SIZE_SCALE = 0.6;
 
@@ -46,13 +37,8 @@ function scaledMapPad(scale: number) {
   };
 }
 
-// From Tailwind's lg up, the city picker floats beside the map over one
-// full-page photo; below it, the picker sits under the map (see the JSX).
 const SIDE_BY_SIDE_QUERY = '(min-width: 1024px)';
 
-// Where the photo sits inside <main> (see lib/mapProjection.ts), plus the
-// edge fade for that placement. Nodes are only visible inside the graph
-// container, so that's the area the cities have to fit in.
 function computePageMapPlacement(pageRect: DOMRect, graphRect: DOMRect, pad: typeof MAP_PAD) {
   const graph = {
     left: graphRect.left - pageRect.left,
@@ -62,13 +48,10 @@ function computePageMapPlacement(pageRect: DOMRect, graphRect: DOMRect, pad: typ
   };
 
   if (window.matchMedia(SIDE_BY_SIDE_QUERY).matches) {
-    // The photo fills the page, centred on the window.
     const box = computeMapBox(pageRect.width, pageRect.height, initialNodes, graph, pad);
     return { box, fade: mapEdgeFadeStyle(box, pageRect) };
   }
 
-  // Stacked: the photo stays inside the graph area, so it never runs under the
-  // title or the picker below it.
   const local = computeMapBox(
     graphRect.width,
     graphRect.height,
@@ -81,9 +64,6 @@ function computePageMapPlacement(pageRect: DOMRect, graphRect: DOMRect, pad: typ
   return { box, fade: mapEdgeFadeStyle(local, graphRect) };
 }
 
-// The photo is positioned inside <main>, but each network container only
-// covers part of it (the graph column, not the sidebar) — so a node's local
-// pixel position is its position in <main> minus the container's offset.
 function computeNodePixelPositions(mapBox: MapBox, containerOffset: { left: number; top: number }) {
   return initialNodes.map((n) => {
     const { x, y } = projectCity(n, mapBox);
@@ -122,40 +102,21 @@ const initialEdges = [
 const activePathColor = '#22d3ee';
 const idleEdgeColor = '#a5f3fc';
 const hoverEdgeColor = '#67e8f9';
-// Edges get a dark drop-shadow (below) so a bright cyan line reads clearly
-// whether it crosses a light cloud or a dark mountain patch in the photo.
 const edgeShadow = { enabled: true, color: 'rgba(0,0,0,0.65)', size: 6, x: 0, y: 0 };
 const lockedInteraction = { hover: true, dragView: false, zoomView: false, dragNodes: false, selectable: true } as const;
-// The view is pinned 1:1 to real screen pixels (see alignPreviewNetwork
-// below) rather than vis-network's auto-fit zoom, so these are plain pixel
-// sizes now — no zoom multiplier to compensate for.
 const ROUTER_ICON_SIZE = 23;
 const DEVICE_ICON_SIZE = 26;
-const EDGE_FONT_SIZE = 11; // path-cost numbers only — city names are custom-drawn below
+const EDGE_FONT_SIZE = 11;
 
-// City names are drawn by hand on an `afterDrawing` canvas hook (see
-// drawCityLabels) instead of vis-network's built-in label renderer, because
-// that renderer only supports one flat text-stroke — it can't layer a solid
-// outline under a separate soft shadow, or add a rounded backing chip.
 const CITY_LABEL_FONT_SIZE = 12;
-const CITY_LABEL_COLOR = '#eafbff'; // light cyan-white, picks up a touch of the UI's glow
-// Once both start and goal are picked, every other city name drops to this
-// muted tone instead — makes the PC/server labels the only bright text left.
+const CITY_LABEL_COLOR = '#eafbff';
 const CITY_LABEL_IDLE_DIM_COLOR = '#64748b';
-const CITY_LABEL_OFFSET_Y = 24; // gap below the icon center where the label sits
-// 1) A real solid stroke (opaque dark navy, not a translucent blur) — holds
-//    up on mid-tone terrain (green patches near Fagaras/Timisoara) where a
-//    shadow alone gets lost.
+const CITY_LABEL_OFFSET_Y = 24;
 const CITY_LABEL_STROKE_WIDTH = 3;
 const CITY_LABEL_STROKE_COLOR = '#0a1628';
-// A soft shadow rendered in the same pass as the stroke (canvas shadows
-// composite behind their source), so the outline gets a soft halo under it
-// rather than replacing the shadow with a hard edge.
 const CITY_LABEL_SHADOW_COLOR = 'rgba(0,0,0,0.6)';
 const CITY_LABEL_SHADOW_BLUR = 6;
 const CITY_LABEL_SHADOW_OFFSET_Y = 2;
-// 4) Small dark backing chip — subtle, but guarantees contrast regardless of
-// what's directly behind a given label.
 const CITY_LABEL_PILL_COLOR = 'rgba(8,16,28,0.55)';
 const CITY_LABEL_PILL_PAD_X = 5;
 const CITY_LABEL_PILL_PAD_Y = 4;
@@ -165,21 +126,12 @@ const idleRouterIcon = buildDeviceIcon('router', 'idle');
 const pcIcon = buildDeviceIcon('pc', 'start');
 const serverIcon = buildDeviceIcon('server', 'goal');
 
-// Single source of truth for "what icon/size should this node have given the
-// current selection" — used both for the very first paint (see the prefill
-// effect below, which can set selectionRef before the network exists) and
-// for the per-selection-change update effect, so the two can't drift apart.
 function nodeVisualForSelection(nodeId: string, selection: { start: string; goal: string }, scale = 1) {
   if (nodeId === selection.start) return { image: pcIcon, size: DEVICE_ICON_SIZE * scale };
   if (nodeId === selection.goal) return { image: serverIcon, size: DEVICE_ICON_SIZE * scale };
   return { image: idleRouterIcon, size: ROUTER_ICON_SIZE * scale };
 }
 
-// Draws every city name for one network instance: dark solid outline (with a
-// soft shadow baked into the same stroke pass) topped with a crisp light
-// cyan-white fill, over a small rounded dark chip for guaranteed contrast.
-// Once both start and goal are chosen, every other city dims so the PC/server
-// labels are the only bright text left on the map.
 function drawCityLabels(
   ctx: CanvasRenderingContext2D,
   positions: Map<string, { x: number; y: number }>,
@@ -321,24 +273,12 @@ export default function VisMap() {
   const nodesDataSetRef = useRef<DataSet<VisNode> | null>(null);
   const edgesDataSetRef = useRef<DataSet<VisEdge> | null>(null);
   const selectionRef = useRef({ start: '', goal: '' });
-  // Latest on-screen pixel position per city, kept in sync by
-  // alignPreviewNetwork() and read every frame by drawCityLabels().
   const nodePixelPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
-  // Current sizeScaleFor() of the graph area — read by the label drawing and
-  // the selection effect, updated by alignPreviewNetwork().
   const sizeScaleRef = useRef(1);
 
   const [selection, setSelection] = useState({ start: '', goal: '' });
-  // null until measured on the client — the photo falls back to plain
-  // object-fit: cover for the first paint, which matches on most screens.
   const [mapPlacement, setMapPlacement] = useState<MapPlacement | null>(null);
 
-  // Prefill Start/Goal from the URL (?start=..&goal=..) — used when arriving
-  // back from the results page via "Back to Map", so the user can tweak one
-  // city and re-run instead of starting from scratch. Declared before the
-  // network-setup effect below so selectionRef is already correct by the
-  // time that effect's dynamic import resolves and builds the initial node
-  // DataSet (see nodeVisualForSelection above).
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -350,7 +290,6 @@ export default function VisMap() {
 
     const next = { start: nextStart, goal: nextGoal === nextStart ? '' : nextGoal };
     selectionRef.current = next;
-    // window is undefined during SSR, so this has to stay an effect (not a useState initializer) or hydration mismatches
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelection(next);
   }, []);
@@ -364,14 +303,6 @@ export default function VisMap() {
     import('vis-network/standalone').then(({ Network, DataSet }) => {
       if (!nodesDataSetRef.current) {
         nodesDataSetRef.current = new DataSet(
-          // x/y are placeholders — alignPreviewNetwork() overwrites them with
-          // real pixel positions (derived from xPct/yPct) right after the
-          // network mounts, once the container's actual size is known. No
-          // `label` here on purpose — city names are hand-drawn by
-          // drawCityLabels() instead of vis-network's built-in label text.
-          // Icon/size read from selectionRef.current (not hardcoded idle) so
-          // cities prefilled from the URL already show as PC/server on the
-          // very first paint, instead of flashing idle-router first.
           initialNodes.map(({ id }) => ({
             id,
             x: 0,
@@ -427,9 +358,6 @@ export default function VisMap() {
       const options = {
         physics: false,
         edges: {
-          // No label background pill — a dark text outline instead, so there's
-          // no rectangle anywhere, just glowing lines and outlined text sitting
-          // directly on the map.
           font: {
             align: 'top',
             size: EDGE_FONT_SIZE,
@@ -441,28 +369,16 @@ export default function VisMap() {
           color: { color: idleEdgeColor, highlight: hoverEdgeColor, hover: hoverEdgeColor },
           width: 2,
           shadow: edgeShadow,
-          // Locked-down map, no physics — a 'dynamic' bezier's via-node only
-          // gets repositioned by a physics tick, so with physics off it stays
-          // wherever it was first placed (before layout even ran) and never
-          // catches up. Straight edges sidestep that entirely.
+          // Straight edges: with physics off, curved edges never get laid out.
           smooth: false,
         },
         nodes: {
           shape: 'image',
           shapeProperties: { interpolation: false },
-          // No node font here — city names are hand-drawn (see drawCityLabels).
         },
-        // Locked down: this is a fixed reference map, not a freeform canvas —
-        // clicking still selects start/goal, but nothing can be dragged or
-        // panned out of view.
         interaction: lockedInteraction,
       };
 
-      // Pin the view 1:1 to real screen pixels instead of vis-network's
-      // auto-fit zoom: read the container's current on-screen rect, convert
-      // every node's xPct/yPct into a pixel position local to that
-      // container, push those into the (shared) node DataSet, then center
-      // the view at scale 1 so network-unit == on-screen pixel exactly.
       const alignPreviewNetwork = (network: Network, container: HTMLDivElement) => {
         const rect = container.getBoundingClientRect();
         if (rect.width === 0 || rect.height === 0 || !pageRef.current) return;
@@ -541,9 +457,6 @@ export default function VisMap() {
       networkRef.current.on('click', handleNodeClick);
       previewNetworksRef.current.forEach((network) => network.on('click', handleNodeClick));
 
-      // Re-align on resize — the container's pixel rect and the photo's own
-      // pixel mapping both change with the window, and the graph area can
-      // also change size on its own when the layout switches breakpoints.
       resizeHandler = () => {
         previewNetworksRef.current.forEach((network, i) => alignPreviewNetwork(network, previewContainers[i]));
       };
@@ -608,16 +521,11 @@ export default function VisMap() {
   }, [selection]);
 
   return (
-    // Phones and tablets: header, map, then the picker, and the page scrolls.
-    // From lg: one screen, the picker floating beside the map.
     <main
       ref={pageRef}
       className={`relative box-border min-h-screen w-full overflow-x-hidden p-[10px] lg:h-screen lg:overflow-hidden ${pixelFont.className}`}
       style={{ background: '#060a13', color: '#e2f8ff' }}
     >
-      {/* The photo itself is the background now — no dark scrim over it.
-          Legibility comes from the icon glow/outline + text-stroke treatment
-          instead of dimming the map. */}
       <div
         style={{
           position: 'absolute',
@@ -645,7 +553,6 @@ export default function VisMap() {
         />
       </div>
 
-      {/* No box here either — just a standout glowing title sitting on the map. */}
       <header
         className="h-[64px] px-[10px] sm:px-5 lg:h-[100px]"
         style={{
@@ -689,17 +596,11 @@ export default function VisMap() {
         </a>
       </header>
 
-      {/* lg height: the 100px header plus its 10px margin, so the graph area
-          ends at the bottom of the screen and no city is placed below it. */}
       <section
         className="grid grid-cols-1 gap-3 lg:h-[calc(100%-110px)] lg:grid-cols-[minmax(0,1fr)_260px] lg:items-stretch"
         style={{ position: 'relative', zIndex: 1, marginTop: '10px' }}
       >
         {['Blind search'].map((title, index) => (
-          // No card here on purpose — the graph sits directly on the map
-          // background with no panel, border, or fill behind it.
-          // Stacked: the photo's own 3:2 shape, capped so the picker below
-          // stays in reach. From lg it fills its grid cell.
           <article
             key={title}
             className="aspect-[3/2] max-h-[70vh] w-full lg:aspect-auto lg:max-h-none"
@@ -717,9 +618,6 @@ export default function VisMap() {
           </article>
         ))}
 
-        {/* alignSelf: 'start' so this box hugs its own content (ending right
-            after the Start Search button) instead of stretching to match the
-            graph column's full height. */}
         <aside
           className="w-full max-w-[420px] justify-self-center lg:mr-4 lg:max-w-none lg:justify-self-stretch"
           style={{

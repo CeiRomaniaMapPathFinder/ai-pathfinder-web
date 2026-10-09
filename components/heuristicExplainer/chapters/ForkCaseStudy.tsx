@@ -1,8 +1,3 @@
-// The case where our first pass-choice rule went wrong, told in three parts:
-// the fork on the map, how each rule's player passes from Arad and Oradea,
-// and the decision A* then makes at Zerind. Fixed on purpose to this route:
-// it is the story of why τ exists, not a property of the selected route.
-
 import { useMemo, useState, type ReactNode } from 'react';
 import { TbCheck, TbX } from 'react-icons/tb';
 import { computeXgt, explainCity, ROADS, XGT_PARAMS, type XgtParams } from '../../../lib/xgtHeuristic';
@@ -14,7 +9,6 @@ import { Card, PanelTitle, T, Toggle } from '../ui';
 const FROM = 'Zerind';
 const MEET = 'Sibiu';
 const GOAL = 'Bucharest';
-/** The shared stretch after the two ways meet (the cheapest one, for the picture only). */
 const REST_PATH = ['Sibiu', 'Rimnicu Vilcea', 'Pitesti', 'Bucharest'];
 const FIRST_VERSION: XgtParams = { beta: 0.01, gamma: 0.01, tau: 0 };
 
@@ -86,9 +80,6 @@ export default function ForkCaseStudy() {
         </p>
       </header>
 
-      {/* Pinned while the case study is on screen (sticky inside the page's
-          own scroll container), so the rule can be flipped next to whichever
-          part is being read. */}
       <div className="sticky top-3 z-20 -mx-1 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[14px] border border-cyan-400/30 bg-[#081120]/[0.97] px-3 py-2 shadow-[0_10px_28px_rgba(0,0,0,0.55)] backdrop-blur-md">
         <span className="text-[11px] font-semibold tracking-wide text-[#5b7a94] uppercase max-sm:hidden">
           Pass-choice rule

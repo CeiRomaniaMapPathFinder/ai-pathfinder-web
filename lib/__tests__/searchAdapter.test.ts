@@ -96,8 +96,6 @@ describe('A* Zerind -> Bucharest', () => {
     ]);
   });
 
-  // Unlike BFS, A* has to take the goal off the frontier to know its path is the
-  // cheapest, so that expansion is a real step and is counted.
   it('expands Bucharest only on the last step', () => {
     expect(steps.slice(0, -1).some((s) => s.currentNode === 'Bucharest')).toBe(false);
     expect(steps.at(-1)?.currentNode).toBe('Bucharest');

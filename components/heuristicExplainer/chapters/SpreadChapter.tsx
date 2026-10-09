@@ -44,8 +44,6 @@ export default function SpreadChapter({ model }: { model: ExplainerModel }) {
   const maxHops = Math.max(...Object.values(hops));
   const hSettles = useMemo(() => roundHSettles(result.rounds, result.h, goal, result.params.gamma), [result, goal]);
 
-  // Early rounds, where the spreading is visible, play slowly; the
-  // fine-tuning rounds after that go by faster.
   useEffect(() => {
     if (!playing) return;
     const timer = setTimeout(

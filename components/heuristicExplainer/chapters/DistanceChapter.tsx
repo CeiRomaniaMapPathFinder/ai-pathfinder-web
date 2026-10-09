@@ -71,8 +71,6 @@ export default function DistanceChapter({ model }: { model: ExplainerModel }) {
         <PanelTitle aside={<span style={MONO}>these are the h values under each node in the tree above</span>}>
           The full table for goal <City name={goal} start={start} goal={goal} />
         </PanelTitle>
-        {/* Column-first flow, so reading down the left column and then the
-            right keeps the sorted order. */}
         <ul className="columns-1 gap-x-10 md:columns-2">
           {rows.map((city) => {
             const isGoal = city === goal;

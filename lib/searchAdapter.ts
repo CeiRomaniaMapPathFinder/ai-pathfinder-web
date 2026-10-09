@@ -3,7 +3,6 @@ import type { AlgorithmResult, SearchTraceStep } from './searchApi';
 
 export type AStarNode = { town: string; gn: number; hn: number; fn: number; expandedAt: number };
 
-// The node counters follow the same rules for both algorithms (see the API's BfsSearch).
 type BackendRun = {
   totalNodes: number;
   distance: number;
@@ -23,8 +22,6 @@ export type AStarResponse = BackendRun & {
   heuristicPrecomputeMs: number;
 };
 
-// From /api/compare: both searches timed in the same server call, taking turns. runtime / memoryUsageKb
-// are the median per search over `timedRuns` untraced runs.
 type BackendMeasurement = {
   runtime: number;
   memoryUsageKb: number;
@@ -79,7 +76,6 @@ function makeStep(
   };
 }
 
-// BFS answers start == goal before expanding anything, so it reports 0 nodes expanded.
 function syntheticStep(start: string, nodesExplored: number): SearchTraceStep {
   return { ...makeStep(start, [], [start], [start], [start], 0, true), nodesExplored };
 }
@@ -147,8 +143,6 @@ function aStarSteps(res: AStarResponse, start: string): SearchTraceStep[] {
   const explored = new Set<string>();
   const steps: SearchTraceStep[] = [];
 
-  // A*'s last list is the goal being taken off the frontier: A* must do that to know the path is
-  // optimal, so it is a real expansion and is kept. BFS stops when it first generates the goal.
   const goal = res.path[res.path.length - 1];
   const last = count - 1;
 

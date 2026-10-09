@@ -31,9 +31,6 @@ describe('getRunBothState', () => {
     expect(getRunBothState(trace, trace, trace[1], trace[1])).toEqual({ canRunBoth: true, bothComplete: true });
   });
 
-  // Regression: a 1-hop route's single step is already `done: true` the
-  // moment it loads — that used to make bothComplete true (and the header
-  // permanently show "Reset Both") before the user had done anything.
   it('is neither runnable nor complete when both traces are a single, trivially-done step', () => {
     const trivial = [step({ done: true })];
     expect(getRunBothState(trivial, trivial, trivial[0], trivial[0])).toEqual({

@@ -1,56 +1,36 @@
-// Turns the backend's `route` trace (see lib/astarTreeApi.ts) into a laid-out
-// search tree plus per-step playback state. Pure functions, no React — the
-// page only renders what these return.
-//
-// How the trace links up: every list is `[parent, ...children]`. The parent
-// of list k is the node popped at step `parent.expandedAt`, and that same
-// node already appeared as a child in an earlier list carrying the same
-// `expandedAt` — so children are attached to whichever existing tree node
-// has a matching `expandedAt`. A node with expandedAt >= 0 but no list of its
-// own (the goal) is an expanded leaf.
-
 import type { RouteStep, TreeEntry } from './astarTreeApi';
 
 export type TreeNode = {
-  /** Unique per tree position — the same city can appear many times. */
   id: string;
   entry: TreeEntry;
   parentId: string | null;
   childIds: string[];
   depth: number;
-  /** Playback step at which this node first appears (its parent's expansion). */
   generatedAtStep: number;
-  /** Playback step at which it's expanded, or null if never. */
   expandedAtStep: number | null;
-  /** Cost of the edge from its parent (g_child − g_parent). */
   edgeCost: number | null;
-  /** Top-left corner of the node's box, in tree layout units. */
   x: number;
   y: number;
 };
 
 export type SearchTree = {
   nodes: Record<string, TreeNode>;
-  /** All node ids, parents before children. */
   order: string[];
   rootId: string;
-  /** Node id expanded at each playback step, in expansion order. */
   expansions: string[];
-  /** The raw trace lists again, as tree node ids: [parentId, ...childIds]. */
   lists: string[][];
-  /** Root → goal node ids, empty if the goal was never expanded. */
   finalPath: string[];
   width: number;
   height: number;
 };
 
 export type NodeStatus =
-  | 'hidden' // not generated yet at this step
-  | 'frontier' // generated, waiting in the priority queue
-  | 'current' // being expanded at this step
-  | 'expanded' // expanded at an earlier step
-  | 'path' // on the final route (last step only)
-  | 'unexpanded'; // search finished and this was never popped
+  | 'hidden'
+  | 'frontier'
+  | 'current'
+  | 'expanded'
+  | 'path'
+  | 'unexpanded';
 
 export type StepView = {
   step: number;
@@ -58,7 +38,6 @@ export type StepView = {
   goalReached: boolean;
   currentId: string;
   status: Record<string, NodeStatus>;
-  /** Open list after this step's expansion, lowest f first. */
   frontier: string[];
   expandedCount: number;
   generatedCount: number;
@@ -66,7 +45,6 @@ export type StepView = {
 
 export const NODE_WIDTH = 156;
 export const NODE_HEIGHT = 44;
-/** Space under the box for the `f = g + h` caption. */
 export const LABEL_HEIGHT = 22;
 const SIBLING_GAP = 18;
 const LEVEL_GAP = 50;
@@ -121,8 +99,7 @@ export function buildSearchTree(route: RouteStep[], goal: string): SearchTree {
     lists.push([parentId, ...childIds]);
   });
 
-  // Playback steps follow expansion order; expandedAt values need not be
-  // contiguous, so they're ranked rather than used as indices directly.
+  // expandedAt values can have gaps, so they're ranked rather than used as indices.
   const expansions = [...byExpandedAt.entries()].sort(([a], [b]) => a - b).map(([, id]) => id);
   expansions.forEach((id, step) => {
     nodes[id].expandedAtStep = step;
@@ -146,14 +123,6 @@ export function buildSearchTree(route: RouteStep[], goal: string): SearchTree {
   return { nodes, order, rootId: root.id, expansions, lists, finalPath, width, height };
 }
 
-/**
- * Compact tidy-tree layout: every parent is centred over its children, and
- * each depth tracks the next free x so a subtree only gets pushed right far
- * enough to clear its neighbours on the SAME row — shallow leaves can sit
- * beside a deep branch instead of each leaf claiming a whole column.
- * Positions are computed once for the whole tree, so nodes never shift
- * while the playback reveals them.
- */
 function layoutTree(nodes: Record<string, TreeNode>, rootId: string) {
   const step = NODE_WIDTH + SIBLING_GAP;
   const nextFree: number[] = [];
@@ -198,7 +167,6 @@ function layoutTree(nodes: Record<string, TreeNode>, rootId: string) {
   };
 }
 
-/** Everything the page needs to draw the tree as it stood at `step`. */
 export function viewAtStep(tree: SearchTree, step: number): StepView {
   const isLastStep = step >= tree.expansions.length - 1;
   const goalReached = isLastStep && tree.finalPath.length > 0;
@@ -247,7 +215,6 @@ export function viewAtStep(tree: SearchTree, step: number): StepView {
   };
 }
 
-/** City names along the final route, for display. */
 export function finalPathNames(tree: SearchTree): string[] {
   return tree.finalPath.map((id) => tree.nodes[id].entry.name);
 }

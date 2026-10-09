@@ -115,8 +115,8 @@
         "done": true
       }
     ],
-    "executionTimeMs": 0.00027560000000000003,
-    "memoryUsageKb": 1.0703125,
+    "executionTimeMs": 0.00098325,
+    "memoryUsageKb": 1.2109375,
     "timedRuns": 15000,
     "nodesExpanded": 5,
     "nodesGenerated": 12,
@@ -245,8 +245,8 @@
         "done": true
       }
     ],
-    "executionTimeMs": 0.0004773,
-    "memoryUsageKb": 1.875,
+    "executionTimeMs": 0.0011259999999999998,
+    "memoryUsageKb": 2.09375,
     "timedRuns": 15000,
     "nodesExpanded": 5,
     "nodesGenerated": 12,

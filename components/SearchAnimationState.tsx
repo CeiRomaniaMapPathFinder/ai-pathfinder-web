@@ -244,7 +244,7 @@ export function SearchAnimationProvider({ start, goal, children }: ProviderProps
     },
     {
       label: 'Search Time',
-      hint: `Timer runs from start/goal given to path returned. Median of ${runsText} runs; gaps under ~0.3 µs are a tie.`,
+      hint: `Timer runs from start/goal given to path returned. Both timed in the same server call, taking turns. Median of ${runsText} runs each.`,
       better: lowerWins(result?.bfs.executionTimeMs, result?.astar.executionTimeMs),
       bfs: formatUs(result?.bfs.executionTimeMs),
       astar: formatUs(result?.astar.executionTimeMs),

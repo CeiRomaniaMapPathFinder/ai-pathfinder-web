@@ -1,7 +1,6 @@
 {
   "totalNodes": 10,
   "distance": 418,
-  "runtime": 0.0011848000000000002,
   "path": [
     "Arad",
     "Sibiu",
@@ -147,8 +146,6 @@
       }
     ]
   },
-  "memoryUsageKb": 2.40625,
-  "timedRuns": 15000,
   "nodesExpanded": 5,
   "nodesGenerated": 13,
   "peakNodesStored": 10,

@@ -1,6 +1,14 @@
 //guard to protect searchAdapter
 import { describe, expect, it } from 'vitest';
-import { describeFailure, mapAStarResponse, mapBfsResponse, type AStarResponse, type BfsResponse } from '../searchAdapter';
+import {
+  describeFailure,
+  mapAStarResponse,
+  mapBfsResponse,
+  mapCompareResponse,
+  type AStarResponse,
+  type BfsResponse,
+  type CompareResponse,
+} from '../searchAdapter';
 import { routeEdges } from '../routePath';
 import type { SearchTraceStep } from '../searchApi';
 
@@ -10,6 +18,7 @@ import bfsZerindBucharest from '../__fixtures__/bfs-Zerind-Bucharest.json';
 import astarZerindBucharest from '../__fixtures__/astar-Zerind-Bucharest.json';
 import bfsAradArad from '../__fixtures__/bfs-Arad-Arad.json';
 import astarAradArad from '../__fixtures__/astar-Arad-Arad.json';
+import compareAradBucharest from '../__fixtures__/compare-Arad-Bucharest.json';
 
 const roadCost = new Map<string, number>();
 for (const { from, to, label } of routeEdges) {
@@ -145,17 +154,32 @@ describe('measurements', () => {
     }
   });
 
-  it('passes the backend time, memory and counters through unchanged', () => {
+  it('passes the backend counters through unchanged', () => {
     for (const { name, res, result } of runs) {
-      expect(result.executionTimeMs, name).toBe(res.runtime);
-      expect(result.memoryUsageKb, name).toBe(res.memoryUsageKb);
-      expect(result.timedRuns, name).toBe(res.timedRuns);
       expect(result.nodesGenerated, name).toBe(res.nodesGenerated);
       expect(result.peakNodesStored, name).toBe(res.peakNodesStored);
     }
     expect(mapAStarResponse(astarAradBucharest as AStarResponse, 'Arad').heuristicPrecomputeMs).toBe(
       astarAradBucharest.heuristicPrecomputeMs,
     );
+  });
+});
+
+describe('compare', () => {
+  it('passes time, memory and run count through for both searches', () => {
+    const cost = mapCompareResponse(compareAradBucharest as CompareResponse);
+    for (const key of ['bfs', 'astar'] as const) {
+      const res = compareAradBucharest[key];
+      expect(cost[key]).toEqual({
+        executionTimeMs: res.runtime,
+        memoryUsageKb: res.memoryUsageKb,
+        timedRuns: res.timedRuns,
+      });
+    }
+  });
+
+  it('rejects a response without both searches', () => {
+    expect(() => mapCompareResponse({ bfs: compareAradBucharest.bfs } as CompareResponse)).toThrow();
   });
 });
 

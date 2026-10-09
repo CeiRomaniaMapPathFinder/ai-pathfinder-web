@@ -3,15 +3,11 @@ import type { AlgorithmResult, SearchTraceStep } from './searchApi';
 
 export type AStarNode = { town: string; gn: number; hn: number; fn: number; expandedAt: number };
 
-// runtime / memoryUsageKb are the median per search over `timedRuns` untraced runs on the
-// server; the node counters follow the same rules for both algorithms (see the API's BfsSearch).
+// The node counters follow the same rules for both algorithms (see the API's BfsSearch).
 type BackendRun = {
   totalNodes: number;
   distance: number;
   path: string[];
-  runtime: number;
-  memoryUsageKb: number;
-  timedRuns: number;
   nodesExpanded: number;
   nodesGenerated: number;
   peakNodesStored: number;
@@ -26,6 +22,21 @@ export type AStarResponse = BackendRun & {
   routes: Record<string, AStarNode[]>;
   heuristicPrecomputeMs: number;
 };
+
+// From /api/compare: both searches timed in the same server call, taking turns. runtime / memoryUsageKb
+// are the median per search over `timedRuns` untraced runs.
+type BackendMeasurement = {
+  runtime: number;
+  memoryUsageKb: number;
+  timedRuns: number;
+};
+
+export type CompareResponse = {
+  bfs: BackendMeasurement;
+  astar: BackendMeasurement;
+};
+
+type MeasuredFields = 'executionTimeMs' | 'memoryUsageKb' | 'timedRuns';
 
 const UNEXPECTED_RESPONSE = 'The search backend returned an unexpected response.';
 
@@ -171,36 +182,48 @@ function aStarSteps(res: AStarResponse, start: string): SearchTraceStep[] {
   return steps;
 }
 
-function measurements(res: BackendRun) {
+function counters(res: BackendRun) {
   return {
-    executionTimeMs: res.runtime,
-    memoryUsageKb: res.memoryUsageKb,
-    timedRuns: res.timedRuns,
     nodesExpanded: res.nodesExpanded,
     nodesGenerated: res.nodesGenerated,
     peakNodesStored: res.peakNodesStored,
   };
 }
 
-export function mapBfsResponse(res: BfsResponse, start: string, goal: string): AlgorithmResult {
+export function mapBfsResponse(res: BfsResponse, start: string, goal: string): Omit<AlgorithmResult, MeasuredFields> {
   if (!res || !res.routes || !Array.isArray(res.expanded) || !Array.isArray(res.path)) {
     throw new Error(UNEXPECTED_RESPONSE);
   }
   return {
     steps: bfsSteps(res, start, goal),
-    ...measurements(res),
+    ...counters(res),
   };
 }
 
-export function mapAStarResponse(res: AStarResponse, start: string): AlgorithmResult {
+export function mapAStarResponse(res: AStarResponse, start: string): Omit<AlgorithmResult, MeasuredFields> {
   if (!res || !res.routes || !Array.isArray(res.path)) {
     throw new Error(UNEXPECTED_RESPONSE);
   }
   return {
     steps: aStarSteps(res, start),
-    ...measurements(res),
+    ...counters(res),
     heuristicPrecomputeMs: res.heuristicPrecomputeMs,
   };
+}
+
+function measurement(cost: BackendMeasurement): Pick<AlgorithmResult, MeasuredFields> {
+  return {
+    executionTimeMs: cost.runtime,
+    memoryUsageKb: cost.memoryUsageKb,
+    timedRuns: cost.timedRuns,
+  };
+}
+
+export function mapCompareResponse(res: CompareResponse) {
+  if (!res || !res.bfs || !res.astar) {
+    throw new Error(UNEXPECTED_RESPONSE);
+  }
+  return { bfs: measurement(res.bfs), astar: measurement(res.astar) };
 }
 
 export function describeFailure(status: number, body: unknown): string {

@@ -26,7 +26,6 @@
     "Fagaras",
     "Bucharest"
   ],
-  "runtime": 0.0006578,
   "expanded": [
     "Arad",
     "Sibiu",
@@ -34,8 +33,6 @@
     "Zerind",
     "Fagaras"
   ],
-  "memoryUsageKb": 1.2734375,
-  "timedRuns": 15000,
   "nodesExpanded": 5,
   "nodesGenerated": 12,
   "peakNodesStored": 8

@@ -9,10 +9,7 @@
   "path": [
     "Arad"
   ],
-  "runtime": 0.0001204,
   "expanded": [],
-  "memoryUsageKb": 0.140625,
-  "timedRuns": 15000,
   "nodesExpanded": 0,
   "nodesGenerated": 0,
   "peakNodesStored": 1

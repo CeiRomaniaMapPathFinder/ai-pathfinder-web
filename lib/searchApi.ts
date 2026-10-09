@@ -18,8 +18,10 @@ import {
   describeFailure,
   mapAStarResponse,
   mapBfsResponse,
+  mapCompareResponse,
   type AStarResponse,
   type BfsResponse,
+  type CompareResponse,
 } from './searchAdapter';
 
 /**
@@ -48,8 +50,8 @@ export type SearchTraceStep = {
 
 /**
  * One algorithm's full run: the animation frames plus its measured cost. Time and memory are
- * measured the same way for both algorithms: the search alone (no trace, no network), run
- * `timedRuns` times on the server, median per search.
+ * measured for both algorithms in the same server call, taking turns: the search alone (no trace,
+ * no network), run `timedRuns` times each, median per search.
  */
 export type AlgorithmResult = {
   steps: SearchTraceStep[];
@@ -148,13 +150,14 @@ export async function fetchSearchComparison(
   const base = API_URL.replace(/\/+$/, '');
   const query = new URLSearchParams({ start, end: goal }).toString();
 
-  // One after the other, so the two server-side timings never compete for the CPU.
+  // Path and counters per search; time and memory from one call that measures both, taking turns.
   const bfs = await getJson<BfsResponse>(`${base}/api/blind-search?${query}`, base, signal);
   const astar = await getJson<AStarResponse>(`${base}/api/heuristic-search?${query}`, base, signal);
+  const cost = mapCompareResponse(await getJson<CompareResponse>(`${base}/api/compare?${query}`, base, signal));
 
   return normalize({
-    bfs: mapBfsResponse(bfs, start, goal),
-    astar: mapAStarResponse(astar, start),
+    bfs: { ...mapBfsResponse(bfs, start, goal), ...cost.bfs },
+    astar: { ...mapAStarResponse(astar, start), ...cost.astar },
   });
 }
 

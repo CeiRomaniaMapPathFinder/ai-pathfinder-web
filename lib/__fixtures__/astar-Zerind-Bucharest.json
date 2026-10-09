@@ -1,7 +1,6 @@
 {
   "totalNodes": 10,
   "distance": 493,
-  "runtime": 0.0008012000000000001,
   "path": [
     "Zerind",
     "Arad",
@@ -171,8 +170,6 @@
       }
     ]
   },
-  "memoryUsageKb": 2.03125,
-  "timedRuns": 15000,
   "nodesExpanded": 6,
   "nodesGenerated": 15,
   "peakNodesStored": 10,

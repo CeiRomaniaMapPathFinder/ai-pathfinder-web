@@ -200,12 +200,10 @@ export function SearchAnimationProvider({ start, goal, children }: ProviderProps
   // marked once both animations have reached their final step.
   const bothFinished = Boolean(bfsLive.step?.done && astarLive.step?.done);
 
-  const runsText = result ? result.bfs.timedRuns.toLocaleString('en-US') : 'many';
-
   const comparisonData: ComparisonItem[] = [
     {
       label: 'Path Cost',
-      hint: 'Total road distance of the route found.',
+      hint: 'Total road distance.',
       better: lowerWins(bfsFinal?.pathCost, astarFinal?.pathCost, bothFinished),
       bfs: String(bfsLive.step?.pathCost ?? 0),
       astar: String(astarLive.step?.pathCost ?? 0),
@@ -214,7 +212,7 @@ export function SearchAnimationProvider({ start, goal, children }: ProviderProps
     },
     {
       label: 'Nodes Expanded',
-      hint: 'Cities taken off the frontier. A* also expands the goal.',
+      hint: 'Cities explored (A* counts the goal too).',
       better: lowerWins(bfsFinal?.nodesExplored, astarFinal?.nodesExplored, bothFinished),
       bfs: String(bfsLive.step?.nodesExplored ?? 0),
       astar: String(astarLive.step?.nodesExplored ?? 0),
@@ -226,7 +224,7 @@ export function SearchAnimationProvider({ start, goal, children }: ProviderProps
     // response envelope instead of being hardcoded like they used to be.
     {
       label: 'Peak Nodes Stored',
-      hint: 'Most cities held in memory at once.',
+      hint: 'Most cities kept in memory at once.',
       better: lowerWins(result?.bfs.peakNodesStored, result?.astar.peakNodesStored),
       bfs: String(result?.bfs.peakNodesStored ?? 0),
       astar: String(result?.astar.peakNodesStored ?? 0),
@@ -235,7 +233,7 @@ export function SearchAnimationProvider({ start, goal, children }: ProviderProps
     },
     {
       label: 'Memory Allocated',
-      hint: 'JVM memory one search allocates. Same every run.',
+      hint: 'Memory used per search.',
       better: lowerWins(result?.bfs.memoryUsageKb, result?.astar.memoryUsageKb),
       bfs: formatKb(result?.bfs.memoryUsageKb),
       astar: formatKb(result?.astar.memoryUsageKb),
@@ -244,7 +242,7 @@ export function SearchAnimationProvider({ start, goal, children }: ProviderProps
     },
     {
       label: 'Search Time',
-      hint: `Timer runs from start/goal given to path returned. Both timed in the same server call, taking turns. Median of ${runsText} runs each.`,
+      hint: 'Median time per search, BFS and A* timed together.',
       better: lowerWins(result?.bfs.executionTimeMs, result?.astar.executionTimeMs),
       bfs: formatUs(result?.bfs.executionTimeMs),
       astar: formatUs(result?.astar.executionTimeMs),
@@ -289,16 +287,13 @@ export function LiveComparisonRows() {
       {comparisonData.map((item) => (
         <div
           key={item.label}
-          className="grid grid-cols-3 items-center border-b border-cyan-500/10 py-3 text-[11px]"
+          className="grid grid-cols-3 items-center border-b border-cyan-500/10 py-3 text-[11px] last:border-b-0"
         >
           <p className="font-semibold text-[#e2f8ff]">{item.label}</p>
           <p className={`text-center font-bold ${item.better === 'bfs' ? BETTER_TEXT : 'text-[#67e8f9]'}`}>{item.bfs}</p>
           <p className={`text-center font-bold ${item.better === 'astar' ? BETTER_TEXT : 'text-[#22d3ee]'}`}>{item.astar}</p>
         </div>
       ))}
-      <p className="pt-3 text-center text-[9px] text-[#5b7a94]">
-        Lower is better on every row · <span className={BETTER_TEXT}>green</span> = better
-      </p>
     </>
   );
 }
@@ -330,12 +325,9 @@ export function MeasurementNote() {
 
   return (
     <div className="flex flex-col gap-1 text-[9px] leading-relaxed text-[#5b7a94]">
-      <p>Lower is better on every measure.</p>
-      <p>Path cost and nodes expanded follow the animation.</p>
-      <p>
-        Measured on the server, search only. Not measured: animation, network, A*&apos;s one-off heuristic
-        setup{precompute}.
-      </p>
+      <p>Lower is better.</p>
+      <p>Time and memory: search only, measured on the server.</p>
+      <p>Not included: A*&apos;s one-time heuristic setup{precompute}.</p>
     </div>
   );
 }

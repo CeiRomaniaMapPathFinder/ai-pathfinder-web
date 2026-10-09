@@ -1,8 +1,3 @@
-// Romania city positions as a percentage of the map PHOTO itself
-// (public/images/romania-fantasy-map.png, 1536x1024) — not of the screen or
-// of any container. That makes them the same on every screen size and on
-// both pages; lib/mapProjection.ts turns them into pixels for wherever the
-// photo is actually drawn. To move a city, change it here only.
 export type CityPosition = { id: string; label: string; xPct: number; yPct: number };
 
 export const cityPositions: CityPosition[] = [

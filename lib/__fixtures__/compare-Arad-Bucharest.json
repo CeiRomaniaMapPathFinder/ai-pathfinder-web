@@ -1,0 +1,12 @@
+{
+  "bfs": {
+    "runtime": 0.000608125,
+    "memoryUsageKb": 1.2578125,
+    "timedRuns": 15000
+  },
+  "astar": {
+    "runtime": 0.0012070829999999999,
+    "memoryUsageKb": 2.203125,
+    "timedRuns": 15000
+  }
+}

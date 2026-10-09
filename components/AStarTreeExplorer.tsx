@@ -50,16 +50,9 @@ const ZOOM_STEP = 0.2;
 const MONO = { fontFamily: 'var(--font-geist-mono), ui-monospace, monospace' };
 const GLOW_TEXT = { textShadow: '0 0 8px rgba(34,211,238,0.7)' };
 const CARD = GLASS_CARD;
-// Sidebar cards divide the column by flex-basis, not by their own content, so
-// the column doesn't grow/shrink step to step or on goal-reached; content
-// that doesn't fit scrolls inside the card instead of resizing it.
-// Content height, not a share of the column: stretching these to a fixed
-// 3:2 split left dead space under both cards on short steps.
 const STEP_SLOT = 'shrink-0';
 const INSPECTOR_SLOT = 'shrink-0';
 
-// Same tone family as the map icons (lib/pixelNetworkTheme.ts): frontier =
-// amber, explored = blue, current = cyan, start/path = green.
 type Tone = { fill: string; stroke: string; text: string; caption: string; glow?: string; label: string };
 
 const TONES: Record<Exclude<NodeStatus, 'hidden'>, Tone> = {
@@ -93,10 +86,6 @@ const formatEntry = (node: TreeNode) => {
 
 type AStarTreeExplorerProps = { start: string; goal: string };
 
-/**
- * Remount per route (the page keys it by start/goal) so every load starts
- * from a clean slate instead of resetting state inside effects.
- */
 export default function AStarTreeExplorer({ start, goal }: AStarTreeExplorerProps) {
   const [load, setLoad] = useState<LoadState>({ status: 'loading' });
   const [step, setStep] = useState(0);
@@ -104,9 +93,6 @@ export default function AStarTreeExplorer({ start, goal }: AStarTreeExplorerProp
   const [speed, setSpeed] = useState(1);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [pinnedId, setPinnedId] = useState<string | null>(null);
-  // Zoom lives here, not in the canvas: its controls sit in the strip below
-  // the tree, because floating them over the canvas covered the nodes on
-  // shorter screens.
   const [zoom, setZoom] = useState<number | 'fit'>('fit');
   const [scale, setScale] = useState(1);
 
@@ -134,8 +120,6 @@ export default function AStarTreeExplorer({ start, goal }: AStarTreeExplorerProp
   const tree = load.status === 'ready' ? load.tree : null;
   const maxStep = tree ? tree.expansions.length - 1 : 0;
   const view = useMemo(() => (tree ? viewAtStep(tree, step) : null), [tree, step]);
-  // Derived instead of stored so playback stops itself at the last step
-  // without an effect having to flip isPlaying back off.
   const playing = isPlaying && step < maxStep;
 
   const goTo = useCallback(
@@ -162,8 +146,6 @@ export default function AStarTreeExplorer({ start, goal }: AStarTreeExplorerProp
     return () => clearTimeout(timer);
   }, [playing, step, speed, maxStep]);
 
-  // The page scrolls now, so Space must not hijack the reader's scrolling
-  // (or silently start playback) once the tree is out of view.
   const explorerRef = useRef<HTMLDivElement | null>(null);
   const explorerOnScreen = useRef(true);
 
@@ -206,27 +188,27 @@ export default function AStarTreeExplorer({ start, goal }: AStarTreeExplorerProp
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [goTo, maxStep, step, togglePlay]);
 
-  // Inspector priority: whatever the pointer is on, else a clicked node,
-  // else the node being expanded right now.
   const inspectedId = hoveredId ?? pinnedId ?? view?.currentId ?? null;
 
   return (
     <div
       id="search-tree"
       ref={explorerRef}
-      className={`flex h-full w-full shrink-0 flex-col overflow-hidden bg-[#060a13] text-[#e2f8ff] ${pixelFont.className}`}
+      className={`flex w-full shrink-0 flex-col bg-[#060a13] text-[#e2f8ff] lg:h-full lg:overflow-hidden ${pixelFont.className}`}
     >
-      <header className="flex shrink-0 items-center gap-4 px-5 pt-5 pb-4">
+      <header className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-3 px-3 pt-4 pb-3 sm:gap-x-4 sm:px-5 sm:pt-5 sm:pb-4">
         <Link
           href={`/page2?start=${encodeURIComponent(start)}&goal=${encodeURIComponent(goal)}`}
           aria-label="Back to the route comparison for this start and goal"
-          className="flex shrink-0 items-center gap-2 rounded-[14px] border border-cyan-500/30 bg-[#0b1220] px-3 py-2 text-[11px] font-bold text-[#67e8f9] shadow-[0_0_14px_rgba(34,211,238,0.25)] transition hover:shadow-[0_0_20px_rgba(34,211,238,0.45)]"
+          className="flex shrink-0 items-center gap-2 rounded-[14px] border border-cyan-500/30 bg-[#0b1220] px-2.5 py-2 text-[10px] sm:px-3 sm:text-[11px] font-bold text-[#67e8f9] shadow-[0_0_14px_rgba(34,211,238,0.25)] transition hover:shadow-[0_0_20px_rgba(34,211,238,0.45)]"
         >
           <IoIosArrowRoundBack size={20} color="#67e8f9" />
-          Back to Comparison
+          <span>
+            Back<span className="hidden sm:inline"> to Comparison</span>
+          </span>
         </Link>
 
-        <h1 className="flex min-w-0 shrink-0 items-baseline gap-1.5 truncate text-[15px] font-bold tracking-wide text-[#a5f3fc]">
+        <h1 className="order-last flex w-full min-w-0 items-baseline gap-1.5 truncate text-[13px] font-bold tracking-wide text-[#a5f3fc] sm:text-[15px] lg:order-none lg:w-auto lg:shrink-0">
           <span style={{ textShadow: '0 0 10px rgba(34,211,238,0.9), 0 0 20px rgba(34,211,238,0.5)' }}>A* SEARCH TREE</span>
           <span className="truncate font-bold text-[#22d3ee]">
             · {start} → {goal}
@@ -251,34 +233,29 @@ export default function AStarTreeExplorer({ start, goal }: AStarTreeExplorerProp
           </span>
         )}
 
-        {/* Plain <a>, not next/link: this page scrolls inside its own
-            container, and the browser's native hash scrolling follows that
-            container while the router's does not. */}
+        {/* Plain <a>: next/link doesn't scroll this page's own scroll container. */}
         <a
           href="#how-it-works"
-          className="ml-auto flex shrink-0 items-center gap-2 rounded-[14px] border border-cyan-500/30 bg-[#0b1220] px-3 py-2 text-[11px] font-bold text-[#67e8f9] transition hover:shadow-[0_0_20px_rgba(34,211,238,0.45)]"
+          className="ml-auto flex shrink-0 items-center gap-2 rounded-[14px] border border-cyan-500/30 bg-[#0b1220] px-2.5 py-2 text-[10px] sm:px-3 sm:text-[11px] font-bold text-[#67e8f9] transition hover:shadow-[0_0_20px_rgba(34,211,238,0.45)]"
         >
-          <TbArrowDown size={14} />
+          <TbArrowDown size={14} className="hidden sm:block" />
           How it works
         </a>
 
         <Link
           href={`/?start=${encodeURIComponent(start)}&goal=${encodeURIComponent(goal)}`}
-          className="flex shrink-0 items-center gap-2 rounded-[14px] border border-cyan-500/30 bg-[#0b1220] px-3 py-2 text-[11px] font-bold text-[#67e8f9] transition hover:shadow-[0_0_20px_rgba(34,211,238,0.45)]"
+          className="flex shrink-0 items-center gap-2 rounded-[14px] border border-cyan-500/30 bg-[#0b1220] px-2.5 py-2 text-[10px] sm:px-3 sm:text-[11px] font-bold text-[#67e8f9] transition hover:shadow-[0_0_20px_rgba(34,211,238,0.45)]"
         >
-          <TbRoute size={16} />
-          Change Route
+          <TbRoute size={16} className="hidden sm:block" />
+          <span>
+            <span className="hidden sm:inline">Change </span>Route
+          </span>
         </Link>
       </header>
 
-      <div className="flex min-h-0 flex-1 gap-4 px-5 pb-5">
-        {/* Two parts. The cards above change height as the search runs (a
-            step can generate four neighbours or none), so they live in
-            their own shrinking, scrollable box; the legend is a sibling
-            that takes the slack, which both keeps the panel looking filled
-            and stops the legend ever being pushed past the bottom. */}
-        <aside className="flex min-h-0 w-[380px] shrink-0 flex-col gap-3">
-          <div className="cyan-scrollbar flex min-h-0 flex-col gap-3 overflow-y-auto pr-1">
+      <div className="flex flex-col gap-4 px-3 pb-5 sm:px-5 lg:min-h-0 lg:flex-1 lg:flex-row">
+        <aside className="flex w-full flex-col gap-3 lg:min-h-0 lg:w-[340px] lg:shrink-0 xl:w-[380px]">
+          <div className="cyan-scrollbar flex flex-col gap-3 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
             {tree && view ? (
               <>
                 <StepCard
@@ -300,8 +277,8 @@ export default function AStarTreeExplorer({ start, goal }: AStarTreeExplorerProp
           {tree && view && <LegendCard />}
         </aside>
 
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
-          <section className={`${CARD} flex min-h-0 flex-1 flex-col px-4 pt-3 pb-2`}>
+        <main className="order-first flex min-w-0 flex-col gap-3 lg:order-none lg:min-h-0 lg:flex-1">
+          <section className={`${CARD} flex h-[70vh] min-h-[420px] flex-col px-4 pt-3 pb-2 lg:h-auto lg:min-h-0 lg:flex-1`}>
             <div className="flex shrink-0 items-start justify-between gap-3">
               <div className="min-w-0">
                 <h2 className="flex items-center gap-2 text-[14px] font-bold leading-tight text-[#a5f3fc]" style={GLOW_TEXT}>
@@ -337,7 +314,7 @@ export default function AStarTreeExplorer({ start, goal }: AStarTreeExplorerProp
               )}
             </div>
 
-            <div className="mt-2 flex shrink-0 items-center gap-2">
+            <div className="mt-2 flex shrink-0 flex-wrap items-center gap-2">
               <PlaybackBar
                 step={step}
                 maxStep={maxStep}
@@ -348,7 +325,7 @@ export default function AStarTreeExplorer({ start, goal }: AStarTreeExplorerProp
                 onTogglePlay={togglePlay}
                 onSpeedChange={setSpeed}
               />
-              <span className="h-5 w-px shrink-0 bg-cyan-500/20" />
+              <span className="hidden h-5 w-px shrink-0 bg-cyan-500/20 sm:block" />
               <ZoomControls scale={scale} isFit={zoom === 'fit'} onZoom={setZoom} />
             </div>
           </section>
@@ -360,8 +337,6 @@ export default function AStarTreeExplorer({ start, goal }: AStarTreeExplorerProp
   );
 }
 
-// ─── Tree canvas ──────────────────────────────────────────────────────────
-
 type TreeCanvasProps = {
   tree: SearchTree;
   view: StepView;
@@ -370,9 +345,7 @@ type TreeCanvasProps = {
   pinnedId: string | null;
   onHover: (id: string | null) => void;
   onPin: (id: string | null) => void;
-  /** 'fit' recomputes from the measured box; a number is an explicit zoom. */
   zoom: number | 'fit';
-  /** Reports the scale actually used, so the controls can label it. */
   onScale: (scale: number) => void;
 };
 
@@ -380,8 +353,6 @@ function TreeCanvas({ tree, view, goal, hoveredId, pinnedId, onHover, onPin, zoo
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [box, setBox] = useState({ width: 0, height: 0 });
 
-  // Callback ref: measures once immediately (so "fit" is right on the first
-  // paint) and then tracks resizes, e.g. the trace panel collapsing.
   const measureRef = useCallback((element: HTMLDivElement | null) => {
     scrollRef.current = element;
     if (!element) return;
@@ -399,7 +370,6 @@ function TreeCanvas({ tree, view, goal, hoveredId, pinnedId, onHover, onPin, zoo
 
   useEffect(() => onScale(scale), [scale, onScale]);
 
-  // When zoomed in, keep the node being expanded on screen as playback moves.
   useEffect(() => {
     if (zoom === 'fit') return;
     scrollRef.current
@@ -685,8 +655,6 @@ function CanvasMessage({ load }: { load: LoadState }) {
   );
 }
 
-// ─── Playback ─────────────────────────────────────────────────────────────
-
 type PlaybackBarProps = {
   step: number;
   maxStep: number;
@@ -703,7 +671,7 @@ function PlaybackBar({ step, maxStep, playing, speed, disabled, onGoTo, onToggle
     'flex h-7 w-7 items-center justify-center rounded-md text-[#7dd3fc] hover:bg-cyan-500/10 disabled:opacity-30';
 
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-1">
+    <div className="flex min-w-0 flex-1 basis-full items-center gap-1 sm:basis-0">
       <button type="button" title="Reset (Home)" onClick={() => onGoTo(0)} disabled={disabled} className={iconButton}>
         <TbPlayerSkipBackFilled size={14} />
       </button>
@@ -755,8 +723,6 @@ function PlaybackBar({ step, maxStep, playing, speed, disabled, onGoTo, onToggle
     </div>
   );
 }
-
-// ─── Sidebar cards ────────────────────────────────────────────────────────
 
 function CardTitle({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
   return (
@@ -826,9 +792,6 @@ function StepCard({ tree, view, backendPath, backendDistance }: StepCardProps) {
 
   return (
     <div className={`${CARD} ${STEP_SLOT} flex flex-col p-4`}>
-      {/* One header line instead of two: the label says as much next to the
-          step counter, and the saved line keeps the panel inside its box on
-          shorter screens. */}
       <p className="flex items-baseline gap-2 text-[10px] tracking-widest text-[#5b7a94]">
         STEP {view.step} OF {tree.expansions.length - 1}
         <span className="tracking-normal text-[#7dd3fc]">· {view.step === 0 ? 'Start at' : 'Expanding'}</span>
@@ -838,10 +801,6 @@ function StepCard({ tree, view, backendPath, backendDistance }: StepCardProps) {
       </p>
       <FormulaRow f={f} g={g} h={h} />
 
-      {/* Only on the start step, where it explains the numbers on screen;
-          once playback moves on, the space goes back to the sidebar so it
-          doesn't need to scroll.
-          Non-breaking spaces hold "g = 0" together on one line. */}
       {view.step === 0 && (
         <p className="mt-3 text-[10px] leading-[1.7] text-[#5b7a94]">
           The start node goes in first with {'g = 0'}, so its f is just the heuristic.
@@ -871,17 +830,9 @@ function StepCard({ tree, view, backendPath, backendDistance }: StepCardProps) {
   );
 }
 
-/**
- * The one thing the tree cannot show: what this node beat. A* pops the
- * smallest f, so the interesting number is the gap to the next best node
- * still waiting — small gaps mean it was a close call, and a gap of 0 is the
- * map's single tie, settled by name order.
- */
 function DecisionCard({ tree, view }: { tree: SearchTree; view: StepView }) {
   const current = tree.nodes[view.currentId];
 
-  // The queue as it stood when this node was popped: the previous step's
-  // frontier still holds it, so the next entry down is what it beat.
   const runnerUp = useMemo(() => {
     if (view.step === 0) return null;
     const before = viewAtStep(tree, view.step - 1);
@@ -891,13 +842,8 @@ function DecisionCard({ tree, view }: { tree: SearchTree; view: StepView }) {
 
   const margin = runnerUp ? runnerUp.entry.f - current.entry.f : null;
 
-  // Bars, not just a highlight: the point is how much better the winner's f
-  // is, and a bar shows that at a glance. Both are scaled against the larger
-  // f so the gap is the visible difference between them.
   const worstF = runnerUp ? Math.max(current.entry.f, runnerUp.entry.f) : current.entry.f;
 
-  // Label and f on one line, bar underneath: city names in this font are
-  // wide enough that a side-by-side label column truncated them.
   const row = (node: TreeNode, winner: boolean) => (
     <div className="flex flex-col gap-0.5">
       <div className="flex items-baseline justify-between gap-2">
@@ -1050,13 +996,6 @@ function LegendCard() {
   ];
 
   return (
-    // Takes whatever height the cards above leave, so the column always ends
-    // flush with the tree panel; flex-1's zero basis means it never squeezes
-    // those cards. The key itself is sized by .legend-fill (globals.css):
-    // rows spread evenly and scale with the height they get, so a tall card
-    // reads as a larger key rather than three rows adrift in empty space.
-    // min-h holds the two-column key's natural height, which size
-    // containment would otherwise let collapse to nothing.
     <div className={`${CARD} flex flex-1 flex-col p-4`}>
       <CardTitle>Legend</CardTitle>
       <div className="legend-fill min-h-[62px] flex-1">
@@ -1093,8 +1032,6 @@ function SidebarPlaceholder() {
   );
 }
 
-// Mirrors CanvasMessage's error state so the sidebar doesn't go blank while
-// the canvas shows the full error card with sample-route links.
 function SidebarError({ message }: { message: string }) {
   return (
     <div className={`${CARD} p-5`}>
@@ -1104,8 +1041,6 @@ function SidebarError({ message }: { message: string }) {
   );
 }
 
-// ─── Raw trace ────────────────────────────────────────────────────────────
-
 type TracePanelProps = {
   tree: SearchTree;
   view: StepView;
@@ -1113,7 +1048,6 @@ type TracePanelProps = {
   onHover: (id: string | null) => void;
 };
 
-/** The backend's route listing verbatim, coloured by the current step. */
 function TracePanel({ tree, view, onGoTo, onHover }: TracePanelProps) {
   const [open, setOpen] = useState(true);
   const goalNode = view.goalReached ? tree.nodes[tree.finalPath[tree.finalPath.length - 1]] : null;

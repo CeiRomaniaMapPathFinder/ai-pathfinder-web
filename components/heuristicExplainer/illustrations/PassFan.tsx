@@ -1,7 +1,3 @@
-// One city's passing options: the ball carrier in the middle, an arrow to
-// each neighbour in (roughly) its real map direction, arrow width = the
-// chance the passer picks that road.
-
 import { useId } from 'react';
 import type { CityBreakdown } from '../../../lib/xgtHeuristic';
 import { ROLE, TERM, pct } from '../shared';
@@ -14,14 +10,8 @@ const RY = 20;
 const NODE_R = 3.2;
 const NAME_SIZE = 3.3;
 const SUB_SIZE = 2.7;
-/** Rough glyph width as a fraction of font size, to keep labels inside the frame. */
 const CHAR_WIDTH = 0.56;
 
-/**
- * Where to put a two-line label outside a point, pushed away along `angle`.
- * A side label that would run off the frame moves under the point instead,
- * and any label is then slid back inside the frame.
- */
 function outside(point: { x: number; y: number }, angle: number, gap: number, textWidth: number) {
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
@@ -36,8 +26,6 @@ function outside(point: { x: number; y: number }, angle: number, gap: number, te
   const left = anchor === 'start' ? x : anchor === 'end' ? x - textWidth : x - textWidth / 2;
   if (left < 1) x += 1 - left;
   if (left + textWidth > WIDTH - 1) x -= left + textWidth - (WIDTH - 1);
-  // First-line baseline: above the point when heading up, below when down,
-  // centred on it when the label sits to the side.
   const y = sin < -0.4 && !below ? point.y - gap - SUB_SIZE - 1 : below ? point.y + gap + NAME_SIZE : point.y - 0.4;
   return { x: snap(x), y: snap(y), anchor } as const;
 }
@@ -51,7 +39,6 @@ export default function PassFan({
   breakdown: CityBreakdown;
   start?: string;
   goal: string;
-  /** Accessible description of what the fan shows. */
   title?: string;
 }) {
   const { city, terms } = breakdown;
@@ -61,7 +48,6 @@ export default function PassFan({
     terms.length > 3 ? Math.PI / 3.2 : Math.PI / 2.6,
   );
 
-  // The carrier's own name goes on the side with the fewest arrows.
   const meanSin = angles.reduce((sum, angle) => sum + Math.sin(angle), 0);
   const centerLabelY = meanSin > 0 ? CENTER.y - 6 : CENTER.y + 8.6;
 
@@ -99,7 +85,6 @@ export default function PassFan({
         });
         const from = along(4.6);
         const to = along(length - NODE_R - 1.6);
-        // The chance sits beside the arrow, about halfway, on its outer side.
         const mid = along(length * 0.5);
         const normal = { x: -sin, y: cos };
         const flip = normal.y < 0 || (Math.abs(normal.y) < 0.2 && normal.x < 0) ? -1 : 1;
@@ -170,7 +155,6 @@ export default function PassFan({
       })}
 
       <circle cx={CENTER.x} cy={CENTER.y} r={4} fill="#0b1220" stroke="#67e8f9" strokeWidth={0.6} />
-      {/* The ball. */}
       <circle cx={CENTER.x} cy={CENTER.y} r={1.4} fill="#ecfeff" />
       <text
         x={CENTER.x}

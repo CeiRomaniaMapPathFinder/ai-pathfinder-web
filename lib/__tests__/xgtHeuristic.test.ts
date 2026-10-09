@@ -2,8 +2,6 @@ import { describe, expect, it } from 'vitest';
 import referenceTable from '../__fixtures__/xgt-h-table.json';
 import { CITIES, computeXgt, explainCity, hFromXgt } from '../xgtHeuristic';
 
-// referenceTable[goal][city] is the backend's h (the research code's export,
-// which XgtHeuristic.java is tested against).
 const reference = referenceTable as Record<string, Record<string, number>>;
 
 describe('computeXgt', () => {

@@ -17,9 +17,6 @@ body {
   font-family: var(--font-geist-sans), sans-serif;
 }
 
-/* Thin cyan/teal scrollbar for scroll containers on the dark pixel-themed
-   pages (e.g. the results-page left sidebar), instead of the default grey
-   browser scrollbar. */
 .cyan-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: rgba(34, 211, 238, 0.45) rgba(10, 18, 32, 0.4);
@@ -43,11 +40,6 @@ body {
   background: rgba(103, 232, 249, 0.65);
 }
 
-/* The /page3 legend's key. The card stretches to fill the sidebar's leftover
-   height, so the key is a size container and scales with the height it gets:
-   two columns of small rows while it is short, one column of larger rows
-   once there is room — spread evenly either way, so a tall card still looks
-   balanced instead of three rows drifting apart. */
 .legend-fill {
   container-type: size;
 }
@@ -85,11 +77,7 @@ body {
   }
 }
 
-/* Force vis-network's internally-created wrapper div + canvas to always
-   match their container's box exactly (100%/100%), even if vis-network's
-   own JS-computed inline pixel sizing lags a frame behind a flex/CSS layout
-   change (e.g. right after the container's height changes) — closes any gap
-   between the map graphic and the bottom of its card. */
+/* vis-network sizes its canvas inline and can lag a layout change. */
 .vis-fill,
 .vis-fill > div,
 .vis-fill canvas {
